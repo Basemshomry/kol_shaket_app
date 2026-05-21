@@ -1,7 +1,17 @@
 import 'package:flutter/material.dart';
-import 'screens/splash_screen.dart';
+import 'package:firebase_core/firebase_core.dart';
 
-void main() {
+import 'firebase_options.dart';
+import 'routes/app_routes.dart';
+import 'theme/app_theme.dart';
+
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+
+  await Firebase.initializeApp(
+    options: DefaultFirebaseOptions.currentPlatform,
+  );
+
   runApp(const KolShaketApp());
 }
 
@@ -13,7 +23,9 @@ class KolShaketApp extends StatelessWidget {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
       title: 'Kol Shaket',
-      home: const SplashScreen(),
+      theme: AppTheme.lightTheme,
+      initialRoute: '/register',
+      routes: AppRoutes.routes,
     );
   }
 }

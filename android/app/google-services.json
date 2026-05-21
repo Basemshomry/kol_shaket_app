@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "691872778978",
+    "project_id": "kol-shaket",
+    "storage_bucket": "kol-shaket.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:691872778978:android:785db8ccf1d8a639262cbb",
+        "android_client_info": {
+          "package_name": "com.example.my_app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAvEIKgnhXBd-XJxavAJUbN6nw7ms-34P0"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
