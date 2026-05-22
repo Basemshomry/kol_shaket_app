@@ -14,14 +14,24 @@ class RegisterScreen extends StatefulWidget {
 
 class _RegisterScreenState extends State<RegisterScreen> {
   final AuthService _authService = AuthService();
-  final RealtimeDatabaseService _databaseService = RealtimeDatabaseService();
 
-  final TextEditingController firstNameController = TextEditingController();
-  final TextEditingController lastNameController = TextEditingController();
-  final TextEditingController idNumberController = TextEditingController();
-  final TextEditingController classController = TextEditingController();
-  final TextEditingController emailController = TextEditingController();
-  final TextEditingController passwordController = TextEditingController();
+  final RealtimeDatabaseService _databaseService =
+      RealtimeDatabaseService();
+
+  final TextEditingController firstNameController =
+      TextEditingController();
+
+  final TextEditingController lastNameController =
+      TextEditingController();
+
+  final TextEditingController idNumberController =
+      TextEditingController();
+
+  final TextEditingController classController =
+      TextEditingController();
+
+  final TextEditingController passwordController =
+      TextEditingController();
 
   bool isLoading = false;
 
@@ -31,8 +41,11 @@ class _RegisterScreenState extends State<RegisterScreen> {
         isLoading = true;
       });
 
+      final generatedEmail =
+          '${idNumberController.text.trim()}@kolshaket.com';
+
       final credential = await _authService.register(
-        email: emailController.text.trim(),
+        email: generatedEmail,
         password: passwordController.text.trim(),
       );
 
@@ -78,7 +91,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
     lastNameController.dispose();
     idNumberController.dispose();
     classController.dispose();
-    emailController.dispose();
     passwordController.dispose();
     super.dispose();
   }
@@ -136,13 +148,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
             buildInput(
               hintText: 'Class',
               controller: classController,
-            ),
-
-            const SizedBox(height: 16),
-
-            buildInput(
-              hintText: 'Email',
-              controller: emailController,
             ),
 
             const SizedBox(height: 16),
