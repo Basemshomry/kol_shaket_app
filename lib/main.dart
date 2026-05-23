@@ -24,7 +24,7 @@ class KolShaketApp extends StatelessWidget {
       debugShowCheckedModeBanner: false,
       title: 'Kol Shaket',
       theme: AppTheme.lightTheme,
-      initialRoute: '/register',
+      initialRoute: AppRoutes.login,
       routes: AppRoutes.routes,
     );
   }
