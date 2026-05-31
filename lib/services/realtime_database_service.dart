@@ -1,6 +1,6 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_database/firebase_database.dart';
-
+import '../models/chat_message_model.dart';
 import '../models/app_user.dart';
 import '../models/report_model.dart';
 
@@ -112,4 +112,54 @@ class RealtimeDatabaseService {
   }) async {
     await _database.ref('reports/$reportId/status').set(status);
   }
+  Future<void> sendChatMessage({
+  required String reportId,
+  required ChatMessageModel message,
+}) async {
+  await _database
+      .ref(
+        'chats/$reportId/messages/${message.messageId}',
+      )
+      .set(message.toMap());
+}
+
+Stream<List<ChatMessageModel>> getChatMessages(
+  String reportId,
+) {
+  return _database
+      .ref('chats/$reportId/messages')
+      .onValue
+      .map((event) {
+    final data = event.snapshot.value;
+
+    if (data == null) {
+      return <ChatMessageModel>[];
+    }
+
+    final messagesMap =
+        data as Map<dynamic, dynamic>;
+
+    final messages = messagesMap.values
+        .map(
+          (item) =>
+              ChatMessageModel.fromMap(item),
+        )
+        .toList();
+
+    messages.sort(
+      (a, b) =>
+          a.createdAt.compareTo(b.createdAt),
+    );
+
+    return messages;
+  });
+}
+
+Future<void> clearChat(
+  String reportId,
+) async {
+  await _database
+      .ref('chats/$reportId/messages')
+      .remove();
+}
 }

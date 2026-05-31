@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../models/report_model.dart';
 import '../services/realtime_database_service.dart';
+import 'chat_screen.dart';
 
 class ReportsScreen extends StatelessWidget {
   ReportsScreen({super.key});
@@ -13,13 +14,10 @@ class ReportsScreen extends StatelessWidget {
     switch (status) {
       case 'pending':
         return Colors.orange;
-
-      case 'reviewed':
+      case 'in_progress':
         return Colors.blue;
-
       case 'resolved':
         return Colors.green;
-
       default:
         return Colors.grey;
     }
@@ -29,16 +27,22 @@ class ReportsScreen extends StatelessWidget {
     switch (status) {
       case 'pending':
         return 'ממתין לבדיקה';
-
-      case 'reviewed':
-        return 'נבדק';
-
+      case 'in_progress':
+        return 'בטיפול';
       case 'resolved':
         return 'טופל';
-
       default:
         return status;
     }
+  }
+
+  void openChat(BuildContext context, ReportModel report) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => ChatScreen(report: report),
+      ),
+    );
   }
 
   @override
@@ -65,9 +69,7 @@ class ReportsScreen extends StatelessWidget {
               return const Center(
                 child: Text(
                   'עדיין לא שלחת פניות',
-                  style: TextStyle(
-                    fontSize: 18,
-                  ),
+                  style: TextStyle(fontSize: 18),
                 ),
               );
             }
@@ -81,65 +83,70 @@ class ReportsScreen extends StatelessWidget {
                 return Card(
                   margin: const EdgeInsets.only(bottom: 16),
                   shape: RoundedRectangleBorder(
-                    borderRadius:
-                        BorderRadius.circular(16),
+                    borderRadius: BorderRadius.circular(16),
                   ),
-                  child: Padding(
-                    padding: const EdgeInsets.all(16),
-                    child: Column(
-                      crossAxisAlignment:
-                          CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          children: [
-                            Expanded(
-                              child: Text(
-                                report.category,
-                                style: const TextStyle(
-                                  fontSize: 20,
-                                  fontWeight:
-                                      FontWeight.bold,
+                  child: InkWell(
+                    borderRadius: BorderRadius.circular(16),
+                    onTap: () => openChat(context, report),
+                    child: Padding(
+                      padding: const EdgeInsets.all(16),
+                      child: Column(
+                        crossAxisAlignment:
+                            CrossAxisAlignment.stretch,
+                        children: [
+                          Row(
+                            children: [
+                              Expanded(
+                                child: Text(
+                                  report.category,
+                                  style: const TextStyle(
+                                    fontSize: 20,
+                                    fontWeight: FontWeight.bold,
+                                  ),
                                 ),
                               ),
-                            ),
-                            Container(
-                              padding:
-                                  const EdgeInsets.symmetric(
-                                horizontal: 10,
-                                vertical: 6,
-                              ),
-                              decoration: BoxDecoration(
-                                color: getStatusColor(
-                                  report.status,
+                              Container(
+                                padding:
+                                    const EdgeInsets.symmetric(
+                                  horizontal: 10,
+                                  vertical: 6,
                                 ),
-                                borderRadius:
-                                    BorderRadius.circular(
-                                  12,
+                                decoration: BoxDecoration(
+                                  color: getStatusColor(report.status),
+                                  borderRadius:
+                                      BorderRadius.circular(12),
                                 ),
-                              ),
-                              child: Text(
-                                getStatusText(
-                                  report.status,
-                                ),
-                                style: const TextStyle(
-                                  color: Colors.white,
+                                child: Text(
+                                  getStatusText(report.status),
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                  ),
                                 ),
                               ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 12),
-                        Text(
-                          report.description,
-                          style: const TextStyle(
-                            fontSize: 16,
+                            ],
                           ),
-                        ),
-                        const SizedBox(height: 12),
-                        Text(
-                          'רמת חומרה: ${report.userSeverity}',
-                        ),
-                      ],
+                          const SizedBox(height: 12),
+                          Text(
+                            report.description,
+                            style: const TextStyle(fontSize: 16),
+                          ),
+                          const SizedBox(height: 12),
+                          Text(
+                            'רמת חומרה: ${report.userSeverity}',
+                            style: const TextStyle(
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          const SizedBox(height: 12),
+                          const Text(
+                            'לחץ לפתיחת צ׳אט עם היועצת',
+                            style: TextStyle(
+                              color: Colors.blue,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
                   ),
                 );
