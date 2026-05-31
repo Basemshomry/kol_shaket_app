@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-
+import 'package:my_app/screens/report_form_screen.dart';
 class HomeScreen extends StatelessWidget {
   HomeScreen({super.key});
 
@@ -27,12 +27,15 @@ class HomeScreen extends StatelessWidget {
   ];
 
   void openReport(BuildContext context, String category) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('נבחרה קטגוריה: $category'),
+  Navigator.push(
+    context,
+    MaterialPageRoute(
+      builder: (_) => ReportFormScreen(
+        category: category,
       ),
-    );
-  }
+    ),
+  );
+}
 
   @override
   Widget build(BuildContext context) {
