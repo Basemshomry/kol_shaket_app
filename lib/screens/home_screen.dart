@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:my_app/screens/report_form_screen.dart';
+
+import '../services/auth_service.dart';
+import 'report_form_screen.dart';
+
 class HomeScreen extends StatelessWidget {
   HomeScreen({super.key});
 
@@ -27,15 +30,27 @@ class HomeScreen extends StatelessWidget {
   ];
 
   void openReport(BuildContext context, String category) {
-  Navigator.push(
-    context,
-    MaterialPageRoute(
-      builder: (_) => ReportFormScreen(
-        category: category,
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => ReportFormScreen(
+          category: category,
+        ),
       ),
-    ),
-  );
-}
+    );
+  }
+
+  Future<void> logout(BuildContext context) async {
+    await AuthService().logout();
+
+    if (!context.mounted) return;
+
+    Navigator.pushNamedAndRemoveUntil(
+      context,
+      '/login',
+      (route) => false,
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -44,6 +59,12 @@ class HomeScreen extends StatelessWidget {
       child: Scaffold(
         appBar: AppBar(
           title: const Text('קול שקט'),
+          actions: [
+            IconButton(
+              icon: const Icon(Icons.logout),
+              onPressed: () => logout(context),
+            ),
+          ],
         ),
         body: Padding(
           padding: const EdgeInsets.all(20),
@@ -51,7 +72,6 @@ class HomeScreen extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               const SizedBox(height: 20),
-
               const Text(
                 'איך אפשר לעזור לך?',
                 textAlign: TextAlign.center,
@@ -60,9 +80,7 @@ class HomeScreen extends StatelessWidget {
                   fontWeight: FontWeight.bold,
                 ),
               ),
-
               const SizedBox(height: 10),
-
               const Text(
                 'בחר את סוג הפנייה שברצונך לשלוח',
                 textAlign: TextAlign.center,
@@ -71,9 +89,7 @@ class HomeScreen extends StatelessWidget {
                   color: Colors.grey,
                 ),
               ),
-
               const SizedBox(height: 30),
-
               Expanded(
                 child: ListView.separated(
                   itemCount: reportCategories.length,

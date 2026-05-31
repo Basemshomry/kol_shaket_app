@@ -1,6 +1,9 @@
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
+import '../routes/app_routes.dart';
 import '../services/auth_service.dart';
+import '../services/realtime_database_service.dart';
 import '../widgets/custom_button.dart';
 
 class LoginScreen extends StatefulWidget {
@@ -12,6 +15,7 @@ class LoginScreen extends StatefulWidget {
 
 class _LoginScreenState extends State<LoginScreen> {
   final AuthService _authService = AuthService();
+  final RealtimeDatabaseService _databaseService = RealtimeDatabaseService();
 
   final TextEditingController idNumberController = TextEditingController();
   final TextEditingController passwordController = TextEditingController();
@@ -32,20 +36,36 @@ class _LoginScreenState extends State<LoginScreen> {
         password: passwordController.text.trim(),
       );
 
+      final currentUser = FirebaseAuth.instance.currentUser;
+
+      if (currentUser == null) {
+        throw Exception('User not found');
+      }
+
+      final appUser = await _databaseService.getUserByUid(currentUser.uid);
+
       if (!mounted) return;
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Login Success'),
-        ),
-      );
-      Navigator.pushReplacementNamed(context, '/home');
+      if (appUser == null) {
+        throw Exception('User data not found');
+      }
+
+      if (appUser.blocked) {
+        await _authService.logout();
+        throw Exception('המשתמש חסום');
+      }
+
+      if (appUser.role == 'student') {
+        Navigator.pushReplacementNamed(context, AppRoutes.home);
+      } else {
+        Navigator.pushReplacementNamed(context, AppRoutes.adminDashboard);
+      }
     } catch (e) {
       if (!mounted) return;
 
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(e.toString()),
+        const SnackBar(
+          content: Text('תעודת זהות או סיסמה לא נכונים'),
         ),
       );
     } finally {
@@ -72,6 +92,7 @@ class _LoginScreenState extends State<LoginScreen> {
     return TextField(
       controller: controller,
       obscureText: obscureText,
+      textDirection: TextDirection.rtl,
       decoration: InputDecoration(
         hintText: hintText,
         border: OutlineInputBorder(
@@ -83,33 +104,43 @@ class _LoginScreenState extends State<LoginScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Login'),
-      ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          children: [
-            const SizedBox(height: 40),
-            buildInput(
-              hintText: 'ID Number',
-              controller: idNumberController,
-            ),
-            const SizedBox(height: 16),
-            buildInput(
-              hintText: 'Password',
-              controller: passwordController,
-              obscureText: true,
-            ),
-            const SizedBox(height: 30),
-            isLoading
-                ? const CircularProgressIndicator()
-                : CustomButton(
-                    text: 'Login',
-                    onPressed: login,
-                  ),
-          ],
+    return Directionality(
+      textDirection: TextDirection.rtl,
+      child: Scaffold(
+        appBar: AppBar(
+          title: const Text('התחברות'),
+        ),
+        body: SingleChildScrollView(
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            children: [
+              const SizedBox(height: 50),
+              buildInput(
+                hintText: 'תעודת זהות',
+                controller: idNumberController,
+              ),
+              const SizedBox(height: 16),
+              buildInput(
+                hintText: 'סיסמה',
+                controller: passwordController,
+                obscureText: true,
+              ),
+              const SizedBox(height: 30),
+              isLoading
+                  ? const CircularProgressIndicator()
+                  : CustomButton(
+                      text: 'התחבר',
+                      onPressed: login,
+                    ),
+              const SizedBox(height: 20),
+              TextButton(
+                onPressed: () {
+                  Navigator.pushNamed(context, AppRoutes.register);
+                },
+                child: const Text('אין לך חשבון? הירשם'),
+              ),
+            ],
+          ),
         ),
       ),
     );

@@ -28,4 +28,16 @@ class ReportModel {
       'createdAt': createdAt.toIso8601String(),
     };
   }
+
+  factory ReportModel.fromMap(Map<dynamic, dynamic> map) {
+    return ReportModel(
+      reportId: map['reportId'] ?? '',
+      studentId: map['studentId'] ?? '',
+      category: map['category'] ?? '',
+      description: map['description'] ?? '',
+      userSeverity: map['userSeverity'] ?? 0,
+      status: map['status'] ?? '',
+      createdAt: DateTime.tryParse(map['createdAt'] ?? '') ?? DateTime.now(),
+    );
+  }
 }

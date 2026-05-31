@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import 'home_screen.dart';
+import 'reports_screen.dart';
 
 class MainNavigationScreen extends StatefulWidget {
   const MainNavigationScreen({super.key});
@@ -16,7 +17,7 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
   final List<Widget> screens = [
     HomeScreen(),
     const Center(child: Text('AI Chat')),
-    const Center(child: Text('Reports')),
+    ReportsScreen(),
     const Center(child: Text('Counselor')),
     const Center(child: Text('Profile')),
   ];

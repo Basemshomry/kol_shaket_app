@@ -1,5 +1,5 @@
-import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:flutter/material.dart';
 
 import 'firebase_options.dart';
 import 'routes/app_routes.dart';
@@ -24,7 +24,7 @@ class KolShaketApp extends StatelessWidget {
       debugShowCheckedModeBanner: false,
       title: 'Kol Shaket',
       theme: AppTheme.lightTheme,
-      initialRoute: AppRoutes.authWrapper,
+      initialRoute: AppRoutes.adminDashboard,
       routes: AppRoutes.routes,
     );
   }
