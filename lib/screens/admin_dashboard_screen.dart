@@ -64,9 +64,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
       if (!mounted) return;
 
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(e.toString()),
-        ),
+        SnackBar(content: Text(e.toString())),
       );
     } finally {
       if (mounted) {
@@ -133,6 +131,13 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
+              CustomButton(
+                text: 'צפייה בכל הפניות',
+                onPressed: () {
+                  Navigator.pushNamed(context, AppRoutes.counselorReports);
+                },
+              ),
+              const SizedBox(height: 30),
               const Text(
                 'הוספת משתמש מאושר',
                 textAlign: TextAlign.center,
@@ -142,7 +147,6 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                 ),
               ),
               const SizedBox(height: 24),
-
               DropdownButtonFormField<String>(
                 value: selectedType,
                 decoration: InputDecoration(
@@ -167,36 +171,27 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                   });
                 },
               ),
-
               const SizedBox(height: 16),
-
               buildInput(
                 hintText: 'תעודת זהות',
                 controller: idController,
               ),
-
               const SizedBox(height: 16),
-
               buildInput(
                 hintText: 'שם פרטי',
                 controller: firstNameController,
               ),
-
               const SizedBox(height: 16),
-
               buildInput(
                 hintText: 'שם משפחה',
                 controller: lastNameController,
               ),
-
               const SizedBox(height: 16),
-
               if (selectedType == 'student')
                 buildInput(
                   hintText: 'כיתה',
                   controller: classController,
                 ),
-
               if (selectedType == 'admin')
                 DropdownButtonFormField<String>(
                   value: selectedRole,
@@ -222,9 +217,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                     });
                   },
                 ),
-
               const SizedBox(height: 30),
-
               isLoading
                   ? const Center(child: CircularProgressIndicator())
                   : CustomButton(

@@ -54,11 +54,9 @@ class RealtimeDatabaseService {
   Future<AppUser?> getUserByUid(String uid) async {
     final snapshot = await _database.ref('users/$uid').get();
     if (!snapshot.exists) return null;
-    final data = Map<String, dynamic>.from(
-  snapshot.value as Map,
-);
 
-return AppUser.fromMap(data);
+    final data = Map<String, dynamic>.from(snapshot.value as Map);
+    return AppUser.fromMap(data);
   }
 
   Future<void> createReport(ReportModel report) async {
@@ -75,9 +73,7 @@ return AppUser.fromMap(data);
     return _database.ref('reports').onValue.map((event) {
       final data = event.snapshot.value;
 
-      if (data == null) {
-        return <ReportModel>[];
-      }
+      if (data == null) return <ReportModel>[];
 
       final reportsMap = data as Map<dynamic, dynamic>;
 
@@ -90,5 +86,30 @@ return AppUser.fromMap(data);
 
       return reports;
     });
+  }
+
+  Stream<List<ReportModel>> getAllReports() {
+    return _database.ref('reports').onValue.map((event) {
+      final data = event.snapshot.value;
+
+      if (data == null) return <ReportModel>[];
+
+      final reportsMap = data as Map<dynamic, dynamic>;
+
+      final reports = reportsMap.values
+          .map((item) => ReportModel.fromMap(item))
+          .toList();
+
+      reports.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+
+      return reports;
+    });
+  }
+
+  Future<void> updateReportStatus({
+    required String reportId,
+    required String status,
+  }) async {
+    await _database.ref('reports/$reportId/status').set(status);
   }
 }

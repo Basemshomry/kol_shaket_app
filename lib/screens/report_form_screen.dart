@@ -17,11 +17,8 @@ class ReportFormScreen extends StatefulWidget {
 }
 
 class _ReportFormScreenState extends State<ReportFormScreen> {
-  final RealtimeDatabaseService _databaseService =
-      RealtimeDatabaseService();
-
-  final TextEditingController reportController =
-      TextEditingController();
+  final RealtimeDatabaseService _databaseService = RealtimeDatabaseService();
+  final TextEditingController reportController = TextEditingController();
 
   double severity = 5;
   bool isLoading = false;
@@ -44,12 +41,21 @@ class _ReportFormScreenState extends State<ReportFormScreen> {
         throw Exception('User not logged in');
       }
 
-      final reportId =
-          DateTime.now().millisecondsSinceEpoch.toString();
+      final appUser = await _databaseService.getUserByUid(currentUser.uid);
+
+      if (appUser == null) {
+        throw Exception('User data not found');
+      }
+
+      final reportId = DateTime.now().millisecondsSinceEpoch.toString();
 
       final report = ReportModel(
         reportId: reportId,
         studentId: currentUser.uid,
+        studentFirstName: appUser.firstName,
+        studentLastName: appUser.lastName,
+        studentClassName: appUser.className,
+        studentIdNumber: appUser.idNumber,
         category: widget.category,
         description: reportController.text.trim(),
         userSeverity: severity.toInt(),

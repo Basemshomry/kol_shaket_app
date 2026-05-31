@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import 'home_screen.dart';
+import 'profile_screen.dart';
 import 'reports_screen.dart';
 
 class MainNavigationScreen extends StatefulWidget {
@@ -16,10 +17,20 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
 
   final List<Widget> screens = [
     HomeScreen(),
-    const Center(child: Text('AI Chat')),
+    const Center(
+      child: Text(
+        'AI Chat',
+        style: TextStyle(fontSize: 22),
+      ),
+    ),
     ReportsScreen(),
-    const Center(child: Text('Counselor')),
-    const Center(child: Text('Profile')),
+    const Center(
+      child: Text(
+        'Counselor Chat',
+        style: TextStyle(fontSize: 22),
+      ),
+    ),
+    ProfileScreen(),
   ];
 
   @override
@@ -37,23 +48,23 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
         items: const [
           BottomNavigationBarItem(
             icon: Icon(Icons.home),
-            label: 'Home',
+            label: 'בית',
           ),
           BottomNavigationBarItem(
             icon: Icon(Icons.smart_toy),
-            label: 'AI Chat',
+            label: 'AI',
           ),
           BottomNavigationBarItem(
             icon: Icon(Icons.report),
-            label: 'Reports',
+            label: 'פניות',
           ),
           BottomNavigationBarItem(
             icon: Icon(Icons.chat),
-            label: 'Counselor',
+            label: 'יועצת',
           ),
           BottomNavigationBarItem(
             icon: Icon(Icons.person),
-            label: 'Profile',
+            label: 'פרופיל',
           ),
         ],
       ),
