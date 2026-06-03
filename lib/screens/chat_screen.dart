@@ -2,15 +2,20 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
 import '../models/chat_message_model.dart';
+import '../models/notification_model.dart';
 import '../models/report_model.dart';
 import '../services/realtime_database_service.dart';
 
 class ChatScreen extends StatefulWidget {
   final ReportModel report;
+  final String chatType;
+  final String chatTitle;
 
   const ChatScreen({
     super.key,
     required this.report,
+    required this.chatType,
+    required this.chatTitle,
   });
 
   @override
@@ -23,19 +28,41 @@ class _ChatScreenState extends State<ChatScreen> {
 
   bool isSending = false;
 
+  @override
+  void initState() {
+    super.initState();
+    _databaseService.markChatAsRead(
+      reportId: widget.report.reportId,
+      chatType: widget.chatType,
+    );
+  }
+
   String formatTime(DateTime date) {
     final hour = date.hour.toString().padLeft(2, '0');
     final minute = date.minute.toString().padLeft(2, '0');
     return '$hour:$minute';
   }
 
+  String roleText(String role) {
+    switch (role) {
+      case 'student':
+        return 'תלמיד';
+      case 'counselor':
+        return 'יועצת';
+      case 'manager':
+        return 'מנהל';
+      case 'teacher':
+        return 'מחנך';
+      default:
+        return 'צוות בית הספר';
+    }
+  }
+
   Future<void> sendMessage() async {
     final text = messageController.text.trim();
-
     if (text.isEmpty) return;
 
     final currentUser = FirebaseAuth.instance.currentUser;
-
     if (currentUser == null) return;
 
     setState(() {
@@ -57,7 +84,20 @@ class _ChatScreenState extends State<ChatScreen> {
 
     await _databaseService.sendChatMessage(
       reportId: widget.report.reportId,
+      chatType: widget.chatType,
       message: message,
+    );
+
+    await _databaseService.createNotification(
+      NotificationModel(
+        notificationId: DateTime.now().millisecondsSinceEpoch.toString(),
+        title: 'הודעה חדשה',
+        body: '${roleText(appUser?.role ?? '')}: $text',
+        type: 'new_message',
+        reportId: widget.report.reportId,
+        createdAt: DateTime.now(),
+        read: false,
+      ),
     );
 
     messageController.clear();
@@ -66,34 +106,6 @@ class _ChatScreenState extends State<ChatScreen> {
       setState(() {
         isSending = false;
       });
-    }
-  }
-
-  Future<void> clearChat() async {
-    await _databaseService.clearChat(widget.report.reportId);
-  }
-
-  @override
-  void dispose() {
-    messageController.dispose();
-    super.dispose();
-  }
-
-  bool isMe(ChatMessageModel message) {
-    final currentUser = FirebaseAuth.instance.currentUser;
-    return currentUser != null && message.senderId == currentUser.uid;
-  }
-
-  String roleText(String role) {
-    switch (role) {
-      case 'student':
-        return 'תלמיד';
-      case 'counselor':
-        return 'יועצת';
-      case 'manager':
-        return 'מנהל';
-      default:
-        return 'משתמש';
     }
   }
 
@@ -121,8 +133,39 @@ class _ChatScreenState extends State<ChatScreen> {
     );
 
     if (result == true) {
-      await clearChat();
+      await _databaseService.clearChat(
+        reportId: widget.report.reportId,
+        chatType: widget.chatType,
+      );
     }
+  }
+
+  @override
+  void dispose() {
+    messageController.dispose();
+    super.dispose();
+  }
+
+  bool isMe(ChatMessageModel message) {
+    final currentUser = FirebaseAuth.instance.currentUser;
+    return currentUser != null && message.senderId == currentUser.uid;
+  }
+
+  Widget messageStatus(ChatMessageModel message, bool mine) {
+    if (!mine) {
+      return const SizedBox.shrink();
+    }
+
+    final bool isRead = message.readBy.length > 1;
+
+    return Text(
+      isRead ? '✓✓' : '✓',
+      style: TextStyle(
+        color: isRead ? Colors.lightGreenAccent : Colors.white70,
+        fontSize: 12,
+        fontWeight: FontWeight.bold,
+      ),
+    );
   }
 
   @override
@@ -131,7 +174,7 @@ class _ChatScreenState extends State<ChatScreen> {
       textDirection: TextDirection.rtl,
       child: Scaffold(
         appBar: AppBar(
-          title: Text('צ׳אט - ${widget.report.category}'),
+          title: Text(widget.chatTitle),
           actions: [
             IconButton(
               icon: const Icon(Icons.delete),
@@ -144,7 +187,8 @@ class _ChatScreenState extends State<ChatScreen> {
             Expanded(
               child: StreamBuilder<List<ChatMessageModel>>(
                 stream: _databaseService.getChatMessages(
-                  widget.report.reportId,
+                  reportId: widget.report.reportId,
+                  chatType: widget.chatType,
                 ),
                 builder: (context, snapshot) {
                   final messages = snapshot.data ?? [];
@@ -163,9 +207,8 @@ class _ChatScreenState extends State<ChatScreen> {
                       final mine = isMe(message);
 
                       return Align(
-                        alignment: mine
-                            ? Alignment.centerRight
-                            : Alignment.centerLeft,
+                        alignment:
+                            mine ? Alignment.centerRight : Alignment.centerLeft,
                         child: Container(
                           margin: const EdgeInsets.only(bottom: 10),
                           padding: const EdgeInsets.all(12),
@@ -195,14 +238,23 @@ class _ChatScreenState extends State<ChatScreen> {
                                 ),
                               ),
                               const SizedBox(height: 6),
-                              Text(
-                                formatTime(message.createdAt),
-                                style: TextStyle(
-                                  color: mine
-                                      ? Colors.white70
-                                      : Colors.black54,
-                                  fontSize: 12,
-                                ),
+                              Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Text(
+                                    formatTime(message.createdAt),
+                                    style: TextStyle(
+                                      color: mine
+                                          ? Colors.white70
+                                          : Colors.black54,
+                                      fontSize: 12,
+                                    ),
+                                  ),
+                                  if (mine) ...[
+                                    const SizedBox(width: 6),
+                                    messageStatus(message, mine),
+                                  ],
+                                ],
                               ),
                             ],
                           ),

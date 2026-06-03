@@ -1,7 +1,9 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_database/firebase_database.dart';
-import '../models/chat_message_model.dart';
+
 import '../models/app_user.dart';
+import '../models/chat_message_model.dart';
+import '../models/notification_model.dart';
 import '../models/report_model.dart';
 
 class RealtimeDatabaseService {
@@ -26,12 +28,14 @@ class RealtimeDatabaseService {
     required String firstName,
     required String lastName,
     required String role,
+    required String className,
   }) async {
     await _database.ref('approved_admins/$idNumber').set({
       'idNumber': idNumber,
       'firstName': firstName,
       'lastName': lastName,
       'role': role,
+      'className': className,
     });
   }
 
@@ -65,14 +69,10 @@ class RealtimeDatabaseService {
 
   Stream<List<ReportModel>> getMyReports() {
     final currentUser = FirebaseAuth.instance.currentUser;
-
-    if (currentUser == null) {
-      return const Stream.empty();
-    }
+    if (currentUser == null) return const Stream.empty();
 
     return _database.ref('reports').onValue.map((event) {
       final data = event.snapshot.value;
-
       if (data == null) return <ReportModel>[];
 
       final reportsMap = data as Map<dynamic, dynamic>;
@@ -83,7 +83,6 @@ class RealtimeDatabaseService {
           .toList();
 
       reports.sort((a, b) => b.createdAt.compareTo(a.createdAt));
-
       return reports;
     });
   }
@@ -91,16 +90,29 @@ class RealtimeDatabaseService {
   Stream<List<ReportModel>> getAllReports() {
     return _database.ref('reports').onValue.map((event) {
       final data = event.snapshot.value;
-
       if (data == null) return <ReportModel>[];
 
       final reportsMap = data as Map<dynamic, dynamic>;
 
-      final reports = reportsMap.values
-          .map((item) => ReportModel.fromMap(item))
-          .toList();
+      final reports =
+          reportsMap.values.map((item) => ReportModel.fromMap(item)).toList();
 
       reports.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+      return reports;
+    });
+  }
+
+  Stream<List<ReportModel>> getReportsForUser(AppUser user) {
+    if (user.role == 'student') {
+      return getMyReports();
+    }
+
+    return getAllReports().map((reports) {
+      if (user.role == 'teacher') {
+        return reports
+            .where((report) => report.studentClassName == user.className)
+            .toList();
+      }
 
       return reports;
     });
@@ -112,54 +124,119 @@ class RealtimeDatabaseService {
   }) async {
     await _database.ref('reports/$reportId/status').set(status);
   }
+
   Future<void> sendChatMessage({
-  required String reportId,
-  required ChatMessageModel message,
-}) async {
-  await _database
-      .ref(
-        'chats/$reportId/messages/${message.messageId}',
-      )
-      .set(message.toMap());
-}
+    required String reportId,
+    required String chatType,
+    required ChatMessageModel message,
+  }) async {
+    await _database
+        .ref('chats/$reportId/$chatType/messages/${message.messageId}')
+        .set(message.toMap());
+  }
 
-Stream<List<ChatMessageModel>> getChatMessages(
-  String reportId,
-) {
-  return _database
-      .ref('chats/$reportId/messages')
-      .onValue
-      .map((event) {
-    final data = event.snapshot.value;
+  Stream<List<ChatMessageModel>> getChatMessages({
+    required String reportId,
+    required String chatType,
+  }) {
+    return _database.ref('chats/$reportId/$chatType/messages').onValue.map(
+      (event) {
+        final data = event.snapshot.value;
+        if (data == null) return <ChatMessageModel>[];
 
-    if (data == null) {
-      return <ChatMessageModel>[];
-    }
+        final messagesMap = data as Map<dynamic, dynamic>;
 
-    final messagesMap =
-        data as Map<dynamic, dynamic>;
+        final messages = messagesMap.values
+            .map((item) => ChatMessageModel.fromMap(item))
+            .toList();
 
-    final messages = messagesMap.values
-        .map(
-          (item) =>
-              ChatMessageModel.fromMap(item),
-        )
-        .toList();
-
-    messages.sort(
-      (a, b) =>
-          a.createdAt.compareTo(b.createdAt),
+        messages.sort((a, b) => a.createdAt.compareTo(b.createdAt));
+        return messages;
+      },
     );
+  }
 
-    return messages;
-  });
-}
+  Future<void> clearChat({
+    required String reportId,
+    required String chatType,
+  }) async {
+    await _database.ref('chats/$reportId/$chatType/messages').remove();
+  }
 
-Future<void> clearChat(
-  String reportId,
-) async {
-  await _database
-      .ref('chats/$reportId/messages')
-      .remove();
-}
+  Stream<int> getUnreadMessagesCount({
+    required String reportId,
+    required String chatType,
+  }) {
+    final currentUser = FirebaseAuth.instance.currentUser;
+    if (currentUser == null) return const Stream.empty();
+
+    return getChatMessages(reportId: reportId, chatType: chatType)
+        .map((messages) {
+      return messages.where((message) {
+        return message.senderId != currentUser.uid &&
+            !message.isReadBy(currentUser.uid);
+      }).length;
+    });
+  }
+
+  Future<void> markChatAsRead({
+    required String reportId,
+    required String chatType,
+  }) async {
+    final currentUser = FirebaseAuth.instance.currentUser;
+    if (currentUser == null) return;
+
+    final snapshot =
+        await _database.ref('chats/$reportId/$chatType/messages').get();
+
+    if (!snapshot.exists || snapshot.value == null) return;
+
+    final messagesMap = snapshot.value as Map<dynamic, dynamic>;
+
+    for (final entry in messagesMap.entries) {
+      final messageId = entry.key.toString();
+      final messageData = entry.value as Map<dynamic, dynamic>;
+      final senderId = messageData['senderId'] ?? '';
+
+      if (senderId != currentUser.uid) {
+        await _database
+            .ref(
+              'chats/$reportId/$chatType/messages/$messageId/readBy/${currentUser.uid}',
+            )
+            .set(true);
+      }
+    }
+  }
+
+  Future<void> createNotification(NotificationModel notification) async {
+    await _database
+        .ref('notifications/${notification.notificationId}')
+        .set(notification.toMap());
+  }
+
+  Stream<List<NotificationModel>> getNotifications() {
+    return _database.ref('notifications').onValue.map((event) {
+      final data = event.snapshot.value;
+      if (data == null) return <NotificationModel>[];
+
+      final notificationsMap = data as Map<dynamic, dynamic>;
+
+      final notifications = notificationsMap.values
+          .map((item) => NotificationModel.fromMap(item))
+          .toList();
+
+      notifications.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+      return notifications;
+    });
+  }
+
+  Stream<int> getUnreadNotificationsCount() {
+    return getNotifications().map((notifications) {
+      return notifications.where((item) => !item.read).length;
+    });
+  }
+
+  Future<void> markNotificationAsRead(String notificationId) async {
+    await _database.ref('notifications/$notificationId/read').set(true);
+  }
 }

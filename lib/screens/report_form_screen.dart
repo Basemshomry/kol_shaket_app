@@ -1,6 +1,7 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
+import '../models/notification_model.dart';
 import '../models/report_model.dart';
 import '../services/realtime_database_service.dart';
 
@@ -64,6 +65,19 @@ class _ReportFormScreenState extends State<ReportFormScreen> {
       );
 
       await _databaseService.createReport(report);
+
+      await _databaseService.createNotification(
+        NotificationModel(
+          notificationId: DateTime.now().millisecondsSinceEpoch.toString(),
+          title: severity.toInt() >= 7 ? 'פנייה חמורה חדשה' : 'פנייה חדשה',
+          body:
+              '${appUser.firstName} ${appUser.lastName} שלח/ה פנייה בנושא ${widget.category}',
+          type: severity.toInt() >= 7 ? 'high_severity' : 'new_report',
+          reportId: reportId,
+          createdAt: DateTime.now(),
+          read: false,
+        ),
+      );
 
       if (!mounted) return;
 

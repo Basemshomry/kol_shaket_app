@@ -7,8 +7,7 @@ import 'chat_screen.dart';
 class ReportsScreen extends StatelessWidget {
   ReportsScreen({super.key});
 
-  final RealtimeDatabaseService _databaseService =
-      RealtimeDatabaseService();
+  final RealtimeDatabaseService _databaseService = RealtimeDatabaseService();
 
   Color getStatusColor(String status) {
     switch (status) {
@@ -36,12 +35,44 @@ class ReportsScreen extends StatelessWidget {
     }
   }
 
-  void openChat(BuildContext context, ReportModel report) {
+  void openCounselorChat(BuildContext context, ReportModel report) {
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (_) => ChatScreen(report: report),
+        builder: (_) => ChatScreen(
+          report: report,
+          chatType: 'counselor',
+          chatTitle: 'צ׳אט עם יועצת',
+        ),
       ),
+    );
+  }
+
+  Widget unreadBadge(String reportId) {
+    return StreamBuilder<int>(
+      stream: _databaseService.getUnreadMessagesCount(
+        reportId: reportId,
+        chatType: 'counselor',
+      ),
+      builder: (context, snapshot) {
+        final count = snapshot.data ?? 0;
+
+        if (count == 0) {
+          return const SizedBox.shrink();
+        }
+
+        return Container(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+          decoration: BoxDecoration(
+            color: Colors.red,
+            borderRadius: BorderRadius.circular(20),
+          ),
+          child: Text(
+            '$count הודעות חדשות',
+            style: const TextStyle(color: Colors.white),
+          ),
+        );
+      },
     );
   }
 
@@ -56,8 +87,7 @@ class ReportsScreen extends StatelessWidget {
         body: StreamBuilder<List<ReportModel>>(
           stream: _databaseService.getMyReports(),
           builder: (context, snapshot) {
-            if (snapshot.connectionState ==
-                ConnectionState.waiting) {
+            if (snapshot.connectionState == ConnectionState.waiting) {
               return const Center(
                 child: CircularProgressIndicator(),
               );
@@ -87,12 +117,11 @@ class ReportsScreen extends StatelessWidget {
                   ),
                   child: InkWell(
                     borderRadius: BorderRadius.circular(16),
-                    onTap: () => openChat(context, report),
+                    onTap: () => openCounselorChat(context, report),
                     child: Padding(
                       padding: const EdgeInsets.all(16),
                       child: Column(
-                        crossAxisAlignment:
-                            CrossAxisAlignment.stretch,
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
                           Row(
                             children: [
@@ -106,25 +135,23 @@ class ReportsScreen extends StatelessWidget {
                                 ),
                               ),
                               Container(
-                                padding:
-                                    const EdgeInsets.symmetric(
+                                padding: const EdgeInsets.symmetric(
                                   horizontal: 10,
                                   vertical: 6,
                                 ),
                                 decoration: BoxDecoration(
                                   color: getStatusColor(report.status),
-                                  borderRadius:
-                                      BorderRadius.circular(12),
+                                  borderRadius: BorderRadius.circular(12),
                                 ),
                                 child: Text(
                                   getStatusText(report.status),
-                                  style: const TextStyle(
-                                    color: Colors.white,
-                                  ),
+                                  style: const TextStyle(color: Colors.white),
                                 ),
                               ),
                             ],
                           ),
+                          const SizedBox(height: 12),
+                          unreadBadge(report.reportId),
                           const SizedBox(height: 12),
                           Text(
                             report.description,

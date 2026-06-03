@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import 'chats_screen.dart';
 import 'home_screen.dart';
 import 'profile_screen.dart';
 import 'reports_screen.dart';
@@ -24,12 +25,7 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
       ),
     ),
     ReportsScreen(),
-    const Center(
-      child: Text(
-        'Counselor Chat',
-        style: TextStyle(fontSize: 22),
-      ),
-    ),
+    ChatsScreen(),
     ProfileScreen(),
   ];
 
@@ -60,7 +56,7 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
           ),
           BottomNavigationBarItem(
             icon: Icon(Icons.chat),
-            label: 'יועצת',
+            label: 'צ׳אטים',
           ),
           BottomNavigationBarItem(
             icon: Icon(Icons.person),

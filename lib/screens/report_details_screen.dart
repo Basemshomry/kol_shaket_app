@@ -1,5 +1,7 @@
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
+import '../models/app_user.dart';
 import '../models/report_model.dart';
 import '../services/realtime_database_service.dart';
 import 'chat_screen.dart';
@@ -34,6 +36,25 @@ class ReportDetailsScreen extends StatelessWidget {
         '${date.minute.toString().padLeft(2, '0')}';
   }
 
+  String roleLabel(String chatType) {
+    switch (chatType) {
+      case 'counselor':
+        return 'יועצת';
+      case 'teacher':
+        return 'מחנך';
+      case 'manager':
+        return 'מנהל';
+      default:
+        return 'צוות';
+    }
+  }
+
+  String chatTypeForUser(AppUser user) {
+    if (user.role == 'teacher') return 'teacher';
+    if (user.role == 'manager') return 'manager';
+    return 'counselor';
+  }
+
   Future<void> updateStatus(BuildContext context, String status) async {
     await _databaseService.updateReportStatus(
       reportId: report.reportId,
@@ -59,6 +80,7 @@ class ReportDetailsScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final currentUser = FirebaseAuth.instance.currentUser;
     final studentName =
         '${report.studentFirstName} ${report.studentLastName}'.trim();
 
@@ -67,58 +89,61 @@ class ReportDetailsScreen extends StatelessWidget {
       child: Scaffold(
         appBar: AppBar(
           title: const Text('פרטי פנייה'),
-          actions: [
-            IconButton(
-              icon: const Icon(Icons.chat),
-              onPressed: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (_) => ChatScreen(report: report),
-                  ),
-                );
-              },
-            ),
-          ],
         ),
-        body: SingleChildScrollView(
-          padding: const EdgeInsets.all(20),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              ElevatedButton.icon(
-                icon: const Icon(Icons.chat),
-                label: const Text('פתח צ׳אט עם התלמיד'),
-                onPressed: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (_) => ChatScreen(report: report),
-                    ),
-                  );
-                },
+        body: FutureBuilder<AppUser?>(
+          future: currentUser == null
+              ? Future.value(null)
+              : _databaseService.getUserByUid(currentUser.uid),
+          builder: (context, snapshot) {
+            final appUser = snapshot.data;
+            final chatType = appUser == null ? 'counselor' : chatTypeForUser(appUser);
+
+            return SingleChildScrollView(
+              padding: const EdgeInsets.all(20),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  ElevatedButton.icon(
+                    icon: const Icon(Icons.chat),
+                    label: Text('פתח צ׳אט ${roleLabel(chatType)}'),
+                    onPressed: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => ChatScreen(
+                            report: report,
+                            chatType: chatType,
+                            chatTitle: studentName.isEmpty
+                                ? 'צ׳אט עם תלמיד'
+                                : 'צ׳אט עם $studentName',
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                  const SizedBox(height: 16),
+                  infoCard('קטגוריה', report.category),
+                  infoCard('שם תלמיד', studentName),
+                  infoCard('תעודת זהות', report.studentIdNumber),
+                  infoCard('כיתה', report.studentClassName),
+                  infoCard('תאריך', formatDate(report.createdAt)),
+                  infoCard('סטטוס', statusText(report.status)),
+                  infoCard('רמת חומרה', report.userSeverity.toString()),
+                  infoCard('תיאור הפנייה', report.description),
+                  const SizedBox(height: 12),
+                  ElevatedButton(
+                    onPressed: () => updateStatus(context, 'in_progress'),
+                    child: const Text('סמן כבטיפול'),
+                  ),
+                  const SizedBox(height: 12),
+                  ElevatedButton(
+                    onPressed: () => updateStatus(context, 'resolved'),
+                    child: const Text('סמן כטופל'),
+                  ),
+                ],
               ),
-              const SizedBox(height: 16),
-              infoCard('קטגוריה', report.category),
-              infoCard('שם תלמיד', studentName),
-              infoCard('תעודת זהות', report.studentIdNumber),
-              infoCard('כיתה', report.studentClassName),
-              infoCard('תאריך', formatDate(report.createdAt)),
-              infoCard('סטטוס', statusText(report.status)),
-              infoCard('רמת חומרה', report.userSeverity.toString()),
-              infoCard('תיאור הפנייה', report.description),
-              const SizedBox(height: 12),
-              ElevatedButton(
-                onPressed: () => updateStatus(context, 'in_progress'),
-                child: const Text('סמן כבטיפול'),
-              ),
-              const SizedBox(height: 12),
-              ElevatedButton(
-                onPressed: () => updateStatus(context, 'resolved'),
-                child: const Text('סמן כטופל'),
-              ),
-            ],
-          ),
+            );
+          },
         ),
       ),
     );

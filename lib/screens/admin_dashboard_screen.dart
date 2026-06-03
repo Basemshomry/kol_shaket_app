@@ -4,6 +4,7 @@ import '../routes/app_routes.dart';
 import '../services/auth_service.dart';
 import '../services/realtime_database_service.dart';
 import '../widgets/custom_button.dart';
+import 'notifications_screen.dart';
 
 class AdminDashboardScreen extends StatefulWidget {
   const AdminDashboardScreen({super.key});
@@ -23,14 +24,15 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
 
   String selectedType = 'student';
   String selectedRole = 'counselor';
-
   bool isLoading = false;
+
+  bool get shouldShowClassField {
+    return selectedType == 'student' || selectedRole == 'teacher';
+  }
 
   Future<void> addApprovedUser() async {
     try {
-      setState(() {
-        isLoading = true;
-      });
+      setState(() => isLoading = true);
 
       if (selectedType == 'student') {
         await _databaseService.addApprovedStudent(
@@ -45,6 +47,8 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
           firstName: firstNameController.text.trim(),
           lastName: lastNameController.text.trim(),
           role: selectedRole,
+          className:
+              selectedRole == 'teacher' ? classController.text.trim() : '',
         );
       }
 
@@ -56,9 +60,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
       if (!mounted) return;
 
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('המשתמש נוסף לרשימה המאושרת'),
-        ),
+        const SnackBar(content: Text('המשתמש נוסף לרשימה המאושרת')),
       );
     } catch (e) {
       if (!mounted) return;
@@ -68,9 +70,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
       );
     } finally {
       if (mounted) {
-        setState(() {
-          isLoading = false;
-        });
+        setState(() => isLoading = false);
       }
     }
   }
@@ -137,6 +137,32 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                   Navigator.pushNamed(context, AppRoutes.counselorReports);
                 },
               ),
+              const SizedBox(height: 12),
+              CustomButton(
+                text: 'כל הצ׳אטים',
+                onPressed: () {
+                  Navigator.pushNamed(context, AppRoutes.chats);
+                },
+              ),
+              const SizedBox(height: 12),
+              StreamBuilder<int>(
+                stream: _databaseService.getUnreadNotificationsCount(),
+                builder: (context, snapshot) {
+                  final count = snapshot.data ?? 0;
+
+                  return CustomButton(
+                    text: count == 0 ? 'התראות' : 'התראות ($count)',
+                    onPressed: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => NotificationsScreen(),
+                        ),
+                      );
+                    },
+                  );
+                },
+              ),
               const SizedBox(height: 30),
               const Text(
                 'הוספת משתמש מאושר',
@@ -162,12 +188,15 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                   ),
                   DropdownMenuItem(
                     value: 'admin',
-                    child: Text('יועצת / מנהל'),
+                    child: Text('צוות בית הספר'),
                   ),
                 ],
                 onChanged: (value) {
                   setState(() {
                     selectedType = value!;
+                    if (selectedType == 'student') {
+                      selectedRole = 'counselor';
+                    }
                   });
                 },
               ),
@@ -187,11 +216,6 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                 controller: lastNameController,
               ),
               const SizedBox(height: 16),
-              if (selectedType == 'student')
-                buildInput(
-                  hintText: 'כיתה',
-                  controller: classController,
-                ),
               if (selectedType == 'admin')
                 DropdownButtonFormField<String>(
                   value: selectedRole,
@@ -210,12 +234,23 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                       value: 'manager',
                       child: Text('מנהל'),
                     ),
+                    DropdownMenuItem(
+                      value: 'teacher',
+                      child: Text('מחנך'),
+                    ),
                   ],
                   onChanged: (value) {
                     setState(() {
                       selectedRole = value!;
                     });
                   },
+                ),
+              if (selectedType == 'admin') const SizedBox(height: 16),
+              if (shouldShowClassField)
+                buildInput(
+                  hintText:
+                      selectedType == 'student' ? 'כיתה' : 'כיתה של המחנך',
+                  controller: classController,
                 ),
               const SizedBox(height: 30),
               isLoading
