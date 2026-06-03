@@ -39,6 +39,53 @@ class RealtimeDatabaseService {
     });
   }
 
+  Future<void> addApprovedStudentsBulk(
+    List<Map<String, String>> students,
+  ) async {
+    final updates = <String, dynamic>{};
+
+    for (final student in students) {
+      final idNumber = student['idNumber'] ?? '';
+
+      if (idNumber.isEmpty) continue;
+
+      updates['approved_students/$idNumber'] = {
+        'idNumber': idNumber,
+        'firstName': student['firstName'] ?? '',
+        'lastName': student['lastName'] ?? '',
+        'className': student['className'] ?? '',
+      };
+    }
+
+    if (updates.isNotEmpty) {
+      await _database.ref().update(updates);
+    }
+  }
+
+  Future<void> addApprovedAdminsBulk(
+    List<Map<String, String>> admins,
+  ) async {
+    final updates = <String, dynamic>{};
+
+    for (final admin in admins) {
+      final idNumber = admin['idNumber'] ?? '';
+
+      if (idNumber.isEmpty) continue;
+
+      updates['approved_admins/$idNumber'] = {
+        'idNumber': idNumber,
+        'firstName': admin['firstName'] ?? '',
+        'lastName': admin['lastName'] ?? '',
+        'role': admin['role'] ?? 'counselor',
+        'className': admin['className'] ?? '',
+      };
+    }
+
+    if (updates.isNotEmpty) {
+      await _database.ref().update(updates);
+    }
+  }
+
   Future<Map<dynamic, dynamic>?> getApprovedStudent(String idNumber) async {
     final snapshot = await _database.ref('approved_students/$idNumber').get();
     if (!snapshot.exists) return null;

@@ -3,7 +3,11 @@ import 'package:flutter/material.dart';
 
 import 'firebase_options.dart';
 import 'routes/app_routes.dart';
+import 'services/session_service.dart';
 import 'theme/app_theme.dart';
+
+final GlobalKey<NavigatorState> navigatorKey =
+    GlobalKey<NavigatorState>();
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -20,12 +24,16 @@ class KolShaketApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      debugShowCheckedModeBanner: false,
-      title: 'Kol Shaket',
-      theme: AppTheme.lightTheme,
-      initialRoute: AppRoutes.adminDashboard,
-      routes: AppRoutes.routes,
+    return SessionService(
+      navigatorKey: navigatorKey,
+      child: MaterialApp(
+        navigatorKey: navigatorKey,
+        debugShowCheckedModeBanner: false,
+        title: 'Kol Shaket',
+        theme: AppTheme.lightTheme,
+        initialRoute: AppRoutes.login,
+        routes: AppRoutes.routes,
+      ),
     );
   }
 }

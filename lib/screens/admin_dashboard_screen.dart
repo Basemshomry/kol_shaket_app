@@ -4,6 +4,7 @@ import '../routes/app_routes.dart';
 import '../services/auth_service.dart';
 import '../services/realtime_database_service.dart';
 import '../widgets/custom_button.dart';
+import 'excel_import_screen.dart';
 import 'notifications_screen.dart';
 
 class AdminDashboardScreen extends StatefulWidget {
@@ -87,6 +88,15 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
     );
   }
 
+  void openExcelImport() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => const ExcelImportScreen(),
+      ),
+    );
+  }
+
   @override
   void dispose() {
     idController.dispose();
@@ -163,9 +173,14 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                   );
                 },
               ),
+              const SizedBox(height: 12),
+              CustomButton(
+                text: 'ייבוא Excel',
+                onPressed: openExcelImport,
+              ),
               const SizedBox(height: 30),
               const Text(
-                'הוספת משתמש מאושר',
+                'הוספת משתמש מאושר ידנית',
                 textAlign: TextAlign.center,
                 style: TextStyle(
                   fontSize: 24,
