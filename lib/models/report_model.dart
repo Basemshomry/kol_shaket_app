@@ -11,6 +11,16 @@ class ReportModel {
   final String status;
   final DateTime createdAt;
 
+  final double? latitude;
+  final double? longitude;
+  final bool locationShared;
+
+  final int aiSeverity;
+  final String aiRiskLevel;
+  final String aiRecommendation;
+  final String aiSummary;
+  final bool aiAnalyzed;
+
   ReportModel({
     required this.reportId,
     required this.studentId,
@@ -23,6 +33,14 @@ class ReportModel {
     required this.userSeverity,
     required this.status,
     required this.createdAt,
+    this.latitude,
+    this.longitude,
+    this.locationShared = false,
+    this.aiSeverity = 0,
+    this.aiRiskLevel = '',
+    this.aiRecommendation = '',
+    this.aiSummary = '',
+    this.aiAnalyzed = false,
   });
 
   Map<String, dynamic> toMap() {
@@ -38,6 +56,14 @@ class ReportModel {
       'userSeverity': userSeverity,
       'status': status,
       'createdAt': createdAt.toIso8601String(),
+      'latitude': latitude,
+      'longitude': longitude,
+      'locationShared': locationShared,
+      'aiSeverity': aiSeverity,
+      'aiRiskLevel': aiRiskLevel,
+      'aiRecommendation': aiRecommendation,
+      'aiSummary': aiSummary,
+      'aiAnalyzed': aiAnalyzed,
     };
   }
 
@@ -54,6 +80,18 @@ class ReportModel {
       userSeverity: map['userSeverity'] ?? 0,
       status: map['status'] ?? '',
       createdAt: DateTime.tryParse(map['createdAt'] ?? '') ?? DateTime.now(),
+      latitude: map['latitude'] == null
+          ? null
+          : double.tryParse(map['latitude'].toString()),
+      longitude: map['longitude'] == null
+          ? null
+          : double.tryParse(map['longitude'].toString()),
+      locationShared: map['locationShared'] ?? false,
+      aiSeverity: map['aiSeverity'] ?? 0,
+      aiRiskLevel: map['aiRiskLevel'] ?? '',
+      aiRecommendation: map['aiRecommendation'] ?? '',
+      aiSummary: map['aiSummary'] ?? '',
+      aiAnalyzed: map['aiAnalyzed'] ?? false,
     );
   }
 }

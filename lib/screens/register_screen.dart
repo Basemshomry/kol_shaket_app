@@ -1,9 +1,11 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
+import '../constants/app_strings.dart';
 import '../models/app_user.dart';
 import '../routes/app_routes.dart';
 import '../services/auth_service.dart';
+import '../services/language_service.dart';
 import '../services/realtime_database_service.dart';
 import '../widgets/custom_button.dart';
 
@@ -37,15 +39,14 @@ class _RegisterScreenState extends State<RegisterScreen> {
       final approvedAdmin = await _databaseService.getApprovedAdmin(idNumber);
 
       if (approvedStudent == null && approvedAdmin == null) {
-        throw Exception('תעודת הזהות לא נמצאת ברשימת בית הספר');
+        throw Exception(AppStrings.idNotApproved);
       }
 
       final bool isStudent = approvedStudent != null;
       final approvedData = isStudent ? approvedStudent : approvedAdmin!;
 
-      final String role = isStudent
-          ? 'student'
-          : (approvedData['role'] ?? 'counselor');
+      final String role =
+          isStudent ? 'student' : (approvedData['role'] ?? 'counselor');
 
       final generatedEmail = '$idNumber@kolshaket.com';
 
@@ -76,12 +77,12 @@ class _RegisterScreenState extends State<RegisterScreen> {
     } on FirebaseAuthException catch (e) {
       if (!mounted) return;
 
-      String message = 'אירעה שגיאה בהרשמה';
+      String message = AppStrings.registerError;
 
       if (e.code == 'email-already-in-use') {
-        message = 'משתמש עם תעודת זהות זו כבר רשום במערכת';
+        message = AppStrings.alreadyRegistered;
       } else if (e.code == 'weak-password') {
-        message = 'הסיסמה חייבת להכיל לפחות 6 תווים';
+        message = AppStrings.weakPassword;
       }
 
       ScaffoldMessenger.of(context).showSnackBar(
@@ -117,7 +118,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
     return TextField(
       controller: controller,
       obscureText: obscureText,
-      textDirection: TextDirection.rtl,
+      textDirection:
+          LanguageService.instance.isRtl ? TextDirection.rtl : TextDirection.ltr,
       decoration: InputDecoration(
         hintText: hintText,
         border: OutlineInputBorder(
@@ -129,36 +131,33 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Directionality(
-      textDirection: TextDirection.rtl,
-      child: Scaffold(
-        appBar: AppBar(
-          title: const Text('הרשמה'),
-        ),
-        body: SingleChildScrollView(
-          padding: const EdgeInsets.all(20),
-          child: Column(
-            children: [
-              const SizedBox(height: 40),
-              buildInput(
-                hintText: 'תעודת זהות',
-                controller: idNumberController,
-              ),
-              const SizedBox(height: 16),
-              buildInput(
-                hintText: 'סיסמה',
-                controller: passwordController,
-                obscureText: true,
-              ),
-              const SizedBox(height: 30),
-              isLoading
-                  ? const CircularProgressIndicator()
-                  : CustomButton(
-                      text: 'הירשם',
-                      onPressed: register,
-                    ),
-            ],
-          ),
+    return Scaffold(
+      appBar: AppBar(
+        title: Text(AppStrings.register),
+      ),
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          children: [
+            const SizedBox(height: 40),
+            buildInput(
+              hintText: AppStrings.idNumber,
+              controller: idNumberController,
+            ),
+            const SizedBox(height: 16),
+            buildInput(
+              hintText: AppStrings.password,
+              controller: passwordController,
+              obscureText: true,
+            ),
+            const SizedBox(height: 30),
+            isLoading
+                ? const CircularProgressIndicator()
+                : CustomButton(
+                    text: AppStrings.registerButton,
+                    onPressed: register,
+                  ),
+          ],
         ),
       ),
     );

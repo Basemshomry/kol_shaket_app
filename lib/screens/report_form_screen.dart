@@ -1,9 +1,14 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:geolocator/geolocator.dart';
 
+import '../constants/app_strings.dart';
 import '../models/notification_model.dart';
 import '../models/report_model.dart';
+import '../services/ai_chatbot_service.dart';
+import '../services/ai_service.dart';
 import '../services/realtime_database_service.dart';
+import 'chat_screen.dart';
 
 class ReportFormScreen extends StatefulWidget {
   final String category;
@@ -19,6 +24,9 @@ class ReportFormScreen extends StatefulWidget {
 
 class _ReportFormScreenState extends State<ReportFormScreen> {
   final RealtimeDatabaseService _databaseService = RealtimeDatabaseService();
+  final AiService _aiService = AiService();
+  final AiChatbotService _aiChatbotService = AiChatbotService();
+
   final TextEditingController reportController = TextEditingController();
 
   double severity = 5;
@@ -30,11 +38,46 @@ class _ReportFormScreenState extends State<ReportFormScreen> {
     super.dispose();
   }
 
+  Future<Position?> getCurrentLocation() async {
+    final serviceEnabled = await Geolocator.isLocationServiceEnabled();
+
+    if (!serviceEnabled) {
+      if (!mounted) return null;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(AppStrings.locationServicesOff)),
+      );
+      return null;
+    }
+
+    LocationPermission permission = await Geolocator.checkPermission();
+
+    if (permission == LocationPermission.denied) {
+      permission = await Geolocator.requestPermission();
+    }
+
+    if (permission == LocationPermission.denied ||
+        permission == LocationPermission.deniedForever) {
+      if (!mounted) return null;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(AppStrings.locationRequired)),
+      );
+      return null;
+    }
+
+    return Geolocator.getCurrentPosition(
+      desiredAccuracy: LocationAccuracy.high,
+    );
+  }
+
   Future<void> submitReport() async {
     try {
-      setState(() {
-        isLoading = true;
-      });
+      setState(() => isLoading = true);
+
+      final description = reportController.text.trim();
+
+      if (description.isEmpty) {
+        throw Exception(AppStrings.descriptionRequired);
+      }
 
       final currentUser = FirebaseAuth.instance.currentUser;
 
@@ -48,6 +91,18 @@ class _ReportFormScreenState extends State<ReportFormScreen> {
         throw Exception('User data not found');
       }
 
+      final position = await getCurrentLocation();
+
+      if (position == null) {
+        throw Exception(AppStrings.locationRequired);
+      }
+
+      final aiResult = await _aiService.analyzeReport(
+        category: widget.category,
+        description: description,
+        userSeverity: severity.toInt(),
+      );
+
       final reportId = DateTime.now().millisecondsSinceEpoch.toString();
 
       final report = ReportModel(
@@ -58,21 +113,33 @@ class _ReportFormScreenState extends State<ReportFormScreen> {
         studentClassName: appUser.className,
         studentIdNumber: appUser.idNumber,
         category: widget.category,
-        description: reportController.text.trim(),
+        description: description,
         userSeverity: severity.toInt(),
         status: 'pending',
         createdAt: DateTime.now(),
+        latitude: position.latitude,
+        longitude: position.longitude,
+        locationShared: true,
+        aiSeverity: aiResult.aiSeverity,
+        aiRiskLevel: aiResult.aiRiskLevel,
+        aiRecommendation: aiResult.aiRecommendation,
+        aiSummary: aiResult.aiSummary,
+        aiAnalyzed: true,
       );
 
       await _databaseService.createReport(report);
 
+      await _aiChatbotService.startBotIfNeeded(report: report);
+
       await _databaseService.createNotification(
         NotificationModel(
           notificationId: DateTime.now().millisecondsSinceEpoch.toString(),
-          title: severity.toInt() >= 7 ? 'פנייה חמורה חדשה' : 'פנייה חדשה',
+          title: aiResult.aiSeverity >= 8
+              ? AppStrings.severeReportNew
+              : AppStrings.newReport,
           body:
-              '${appUser.firstName} ${appUser.lastName} שלח/ה פנייה בנושא ${widget.category}',
-          type: severity.toInt() >= 7 ? 'high_severity' : 'new_report',
+              '${appUser.firstName} ${appUser.lastName} - ${widget.category}. ${AppStrings.risk}: ${aiResult.aiRiskLevel}',
+          type: aiResult.aiSeverity >= 8 ? 'high_severity' : 'new_report',
           reportId: reportId,
           createdAt: DateTime.now(),
           read: false,
@@ -82,94 +149,88 @@ class _ReportFormScreenState extends State<ReportFormScreen> {
       if (!mounted) return;
 
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('הפנייה נשלחה בהצלחה'),
-        ),
+        SnackBar(content: Text(AppStrings.reportSent)),
       );
 
-      Navigator.pop(context);
+      if (aiResult.aiSeverity >= 8) {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(
+            builder: (_) => ChatScreen(
+              report: report,
+              chatType: 'counselor',
+              chatTitle: AppStrings.chatWithAiAssistant,
+            ),
+          ),
+        );
+      } else {
+        Navigator.pop(context);
+      }
     } catch (e) {
       if (!mounted) return;
 
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(e.toString()),
-        ),
+        SnackBar(content: Text(e.toString())),
       );
     } finally {
-      if (mounted) {
-        setState(() {
-          isLoading = false;
-        });
-      }
+      if (mounted) setState(() => isLoading = false);
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    return Directionality(
-      textDirection: TextDirection.rtl,
-      child: Scaffold(
-        appBar: AppBar(
-          title: Text(widget.category),
-        ),
-        body: Padding(
-          padding: const EdgeInsets.all(20),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              const SizedBox(height: 20),
-              const Text(
-                'תאר מה קרה',
-                style: TextStyle(
-                  fontSize: 22,
-                  fontWeight: FontWeight.bold,
+    return Scaffold(
+      appBar: AppBar(
+        title: Text(widget.category),
+      ),
+      body: Padding(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            const SizedBox(height: 20),
+            Text(
+              AppStrings.describeWhatHappened,
+              style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 16),
+            TextField(
+              controller: reportController,
+              maxLines: 8,
+              decoration: InputDecoration(
+                hintText: AppStrings.writeHere,
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(16),
                 ),
               ),
-              const SizedBox(height: 16),
-              TextField(
-                controller: reportController,
-                maxLines: 8,
-                decoration: InputDecoration(
-                  hintText: 'כתוב כאן...',
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(16),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 30),
-              Text(
-                'רמת חומרה: ${severity.toInt()}',
-                style: const TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-              Slider(
-                value: severity,
-                min: 1,
-                max: 10,
-                divisions: 9,
-                label: severity.toInt().toString(),
-                onChanged: (value) {
-                  setState(() {
-                    severity = value;
-                  });
-                },
-              ),
-              const Spacer(),
-              isLoading
-                  ? const Center(child: CircularProgressIndicator())
-                  : ElevatedButton(
-                      onPressed: submitReport,
-                      child: const Text(
-                        'שלח פנייה',
-                        style: TextStyle(fontSize: 18),
-                      ),
+            ),
+            const SizedBox(height: 30),
+            Text(
+              '${AppStrings.severityLevel}: ${severity.toInt()}',
+              style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w600),
+            ),
+            Slider(
+              value: severity,
+              min: 1,
+              max: 10,
+              divisions: 9,
+              label: severity.toInt().toString(),
+              onChanged: (value) {
+                setState(() => severity = value);
+              },
+            ),
+            const Spacer(),
+            isLoading
+                ? const Center(child: CircularProgressIndicator())
+                : ElevatedButton(
+                    onPressed: submitReport,
+                    child: Text(
+                      AppStrings.sendReport,
+                      style: const TextStyle(fontSize: 18),
                     ),
-              const SizedBox(height: 20),
-            ],
-          ),
+                  ),
+            const SizedBox(height: 20),
+          ],
         ),
       ),
     );

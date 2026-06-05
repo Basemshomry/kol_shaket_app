@@ -1,8 +1,10 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
+import '../constants/app_strings.dart';
 import '../routes/app_routes.dart';
 import '../services/auth_service.dart';
+import '../services/language_service.dart';
 import '../services/realtime_database_service.dart';
 import '../widgets/custom_button.dart';
 
@@ -52,7 +54,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
       if (appUser.blocked) {
         await _authService.logout();
-        throw Exception('המשתמש חסום');
+        throw Exception(AppStrings.userBlocked);
       }
 
       if (appUser.role == 'student') {
@@ -64,8 +66,8 @@ class _LoginScreenState extends State<LoginScreen> {
       if (!mounted) return;
 
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('תעודת זהות או סיסמה לא נכונים'),
+        SnackBar(
+          content: Text(AppStrings.wrongLogin),
         ),
       );
     } finally {
@@ -92,7 +94,8 @@ class _LoginScreenState extends State<LoginScreen> {
     return TextField(
       controller: controller,
       obscureText: obscureText,
-      textDirection: TextDirection.rtl,
+      textDirection:
+          LanguageService.instance.isRtl ? TextDirection.rtl : TextDirection.ltr,
       decoration: InputDecoration(
         hintText: hintText,
         border: OutlineInputBorder(
@@ -104,43 +107,40 @@ class _LoginScreenState extends State<LoginScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Directionality(
-      textDirection: TextDirection.rtl,
-      child: Scaffold(
-        appBar: AppBar(
-          title: const Text('התחברות'),
-        ),
-        body: SingleChildScrollView(
-          padding: const EdgeInsets.all(20),
-          child: Column(
-            children: [
-              const SizedBox(height: 50),
-              buildInput(
-                hintText: 'תעודת זהות',
-                controller: idNumberController,
-              ),
-              const SizedBox(height: 16),
-              buildInput(
-                hintText: 'סיסמה',
-                controller: passwordController,
-                obscureText: true,
-              ),
-              const SizedBox(height: 30),
-              isLoading
-                  ? const CircularProgressIndicator()
-                  : CustomButton(
-                      text: 'התחבר',
-                      onPressed: login,
-                    ),
-              const SizedBox(height: 20),
-              TextButton(
-                onPressed: () {
-                  Navigator.pushNamed(context, AppRoutes.register);
-                },
-                child: const Text('אין לך חשבון? הירשם'),
-              ),
-            ],
-          ),
+    return Scaffold(
+      appBar: AppBar(
+        title: Text(AppStrings.login),
+      ),
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          children: [
+            const SizedBox(height: 50),
+            buildInput(
+              hintText: AppStrings.idNumber,
+              controller: idNumberController,
+            ),
+            const SizedBox(height: 16),
+            buildInput(
+              hintText: AppStrings.password,
+              controller: passwordController,
+              obscureText: true,
+            ),
+            const SizedBox(height: 30),
+            isLoading
+                ? const CircularProgressIndicator()
+                : CustomButton(
+                    text: AppStrings.loginButton,
+                    onPressed: login,
+                  ),
+            const SizedBox(height: 20),
+            TextButton(
+              onPressed: () {
+                Navigator.pushNamed(context, AppRoutes.register);
+              },
+              child: Text(AppStrings.noAccountRegister),
+            ),
+          ],
         ),
       ),
     );

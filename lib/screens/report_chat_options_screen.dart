@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../constants/app_strings.dart';
 import '../models/app_user.dart';
 import '../models/report_model.dart';
 import '../services/realtime_database_service.dart';
@@ -19,13 +20,13 @@ class ReportChatOptionsScreen extends StatelessWidget {
   String roleLabel(String chatType) {
     switch (chatType) {
       case 'counselor':
-        return 'יועצת';
+        return AppStrings.counselor;
       case 'teacher':
-        return 'מחנך';
+        return AppStrings.teacher;
       case 'manager':
-        return 'מנהל';
+        return AppStrings.manager;
       default:
-        return 'צוות';
+        return AppStrings.schoolStaff;
     }
   }
 
@@ -42,18 +43,26 @@ class ReportChatOptionsScreen extends StatelessWidget {
     }
   }
 
+  String statusText(String status) {
+    switch (status) {
+      case 'pending':
+        return AppStrings.pending;
+      case 'in_progress':
+        return AppStrings.inProgress;
+      case 'resolved':
+        return AppStrings.resolved;
+      default:
+        return status;
+    }
+  }
+
   List<String> chatTypesForUser() {
     if (user.role == 'student') {
       return ['counselor', 'teacher', 'manager'];
     }
 
-    if (user.role == 'teacher') {
-      return ['teacher'];
-    }
-
-    if (user.role == 'manager') {
-      return ['manager'];
-    }
+    if (user.role == 'teacher') return ['teacher'];
+    if (user.role == 'manager') return ['manager'];
 
     return ['counselor'];
   }
@@ -63,8 +72,10 @@ class ReportChatOptionsScreen extends StatelessWidget {
         '${report.studentFirstName} ${report.studentLastName}'.trim();
 
     final title = user.role == 'student'
-        ? 'צ׳אט עם ${roleLabel(chatType)}'
-        : 'צ׳אט עם ${studentName.isEmpty ? 'תלמיד' : studentName}';
+        ? '${AppStrings.openChat} ${roleLabel(chatType)}'
+        : studentName.isEmpty
+            ? AppStrings.chatWithStudent
+            : '${AppStrings.openChat} $studentName';
 
     Navigator.push(
       context,
@@ -87,19 +98,14 @@ class ReportChatOptionsScreen extends StatelessWidget {
       builder: (context, snapshot) {
         final count = snapshot.data ?? 0;
 
-        if (count == 0) {
-          return const SizedBox.shrink();
-        }
+        if (count == 0) return const SizedBox.shrink();
 
         return CircleAvatar(
           radius: 14,
           backgroundColor: Colors.red,
           child: Text(
             '$count',
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 12,
-            ),
+            style: const TextStyle(color: Colors.white, fontSize: 12),
           ),
         );
       },
@@ -118,12 +124,10 @@ class ReportChatOptionsScreen extends StatelessWidget {
           child: Icon(roleIcon(chatType)),
         ),
         title: Text(
-          'צ׳אט עם ${roleLabel(chatType)}',
-          style: const TextStyle(
-            fontWeight: FontWeight.bold,
-          ),
+          '${AppStrings.openChat} ${roleLabel(chatType)}',
+          style: const TextStyle(fontWeight: FontWeight.bold),
         ),
-        subtitle: const Text('שיחה נפרדת ושמורה'),
+        subtitle: Text(AppStrings.separateSavedChat),
         trailing: unreadBadge(chatType),
       ),
     );
@@ -133,44 +137,38 @@ class ReportChatOptionsScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final chatTypes = chatTypesForUser();
 
-    return Directionality(
-      textDirection: TextDirection.rtl,
-      child: Scaffold(
-        appBar: AppBar(
-          title: const Text('בחר צ׳אט'),
-        ),
-        body: Padding(
-          padding: const EdgeInsets.all(20),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Card(
-                margin: const EdgeInsets.only(bottom: 20),
-                child: ListTile(
-                  title: Text(
-                    report.category,
-                    style: const TextStyle(
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  subtitle: Text(
-                    'סטטוס: ${report.status} | חומרה: ${report.userSeverity}',
-                  ),
+    return Scaffold(
+      appBar: AppBar(
+        title: Text(AppStrings.chooseChat),
+      ),
+      body: Padding(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Card(
+              margin: const EdgeInsets.only(bottom: 20),
+              child: ListTile(
+                title: Text(
+                  report.category.isEmpty
+                      ? AppStrings.reportWithoutCategory
+                      : report.category,
+                  style: const TextStyle(fontWeight: FontWeight.bold),
+                ),
+                subtitle: Text(
+                  '${AppStrings.status}: ${statusText(report.status)} | ${AppStrings.aiSeverity}: ${report.aiSeverity}',
                 ),
               ),
-              const Text(
-                'בחר עם מי לפתוח שיחה:',
-                style: TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              const SizedBox(height: 16),
-              ...chatTypes.map(
-                (chatType) => buildChatOption(context, chatType),
-              ),
-            ],
-          ),
+            ),
+            Text(
+              AppStrings.chooseWhoToChatWith,
+              style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 16),
+            ...chatTypes.map(
+              (chatType) => buildChatOption(context, chatType),
+            ),
+          ],
         ),
       ),
     );

@@ -1,9 +1,11 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
+import '../constants/app_strings.dart';
 import '../models/chat_message_model.dart';
 import '../models/notification_model.dart';
 import '../models/report_model.dart';
+import '../services/ai_chatbot_service.dart';
 import '../services/realtime_database_service.dart';
 
 class ChatScreen extends StatefulWidget {
@@ -24,6 +26,7 @@ class ChatScreen extends StatefulWidget {
 
 class _ChatScreenState extends State<ChatScreen> {
   final RealtimeDatabaseService _databaseService = RealtimeDatabaseService();
+  final AiChatbotService _aiChatbotService = AiChatbotService();
   final TextEditingController messageController = TextEditingController();
 
   bool isSending = false;
@@ -46,15 +49,17 @@ class _ChatScreenState extends State<ChatScreen> {
   String roleText(String role) {
     switch (role) {
       case 'student':
-        return 'תלמיד';
+        return AppStrings.student;
       case 'counselor':
-        return 'יועצת';
+        return AppStrings.counselor;
       case 'manager':
-        return 'מנהל';
+        return AppStrings.manager;
       case 'teacher':
-        return 'מחנך';
+        return AppStrings.teacher;
+      case 'ai_bot':
+        return AppStrings.aiAssistant;
       default:
-        return 'צוות בית הספר';
+        return AppStrings.schoolStaff;
     }
   }
 
@@ -69,43 +74,59 @@ class _ChatScreenState extends State<ChatScreen> {
       isSending = true;
     });
 
-    final appUser = await _databaseService.getUserByUid(currentUser.uid);
+    try {
+      final appUser = await _databaseService.getUserByUid(currentUser.uid);
+      final senderRole = appUser?.role ?? 'unknown';
 
-    final message = ChatMessageModel(
-      messageId: DateTime.now().millisecondsSinceEpoch.toString(),
-      senderId: currentUser.uid,
-      senderRole: appUser?.role ?? 'unknown',
-      message: text,
-      createdAt: DateTime.now(),
-      readBy: {
-        currentUser.uid: true,
-      },
-    );
-
-    await _databaseService.sendChatMessage(
-      reportId: widget.report.reportId,
-      chatType: widget.chatType,
-      message: message,
-    );
-
-    await _databaseService.createNotification(
-      NotificationModel(
-        notificationId: DateTime.now().millisecondsSinceEpoch.toString(),
-        title: 'הודעה חדשה',
-        body: '${roleText(appUser?.role ?? '')}: $text',
-        type: 'new_message',
-        reportId: widget.report.reportId,
+      final message = ChatMessageModel(
+        messageId: DateTime.now().millisecondsSinceEpoch.toString(),
+        senderId: currentUser.uid,
+        senderRole: senderRole,
+        message: text,
         createdAt: DateTime.now(),
-        read: false,
-      ),
-    );
+        readBy: {
+          currentUser.uid: true,
+        },
+      );
 
-    messageController.clear();
+      await _databaseService.sendChatMessage(
+        reportId: widget.report.reportId,
+        chatType: widget.chatType,
+        message: message,
+      );
 
-    if (mounted) {
-      setState(() {
-        isSending = false;
-      });
+      if (senderRole == 'student') {
+        await _aiChatbotService.sendBotReply(
+          reportId: widget.report.reportId,
+          chatType: widget.chatType,
+          studentMessage: text,
+        );
+      } else {
+        await _aiChatbotService.disableBot(
+          reportId: widget.report.reportId,
+          chatType: widget.chatType,
+        );
+      }
+
+      await _databaseService.createNotification(
+        NotificationModel(
+          notificationId: DateTime.now().millisecondsSinceEpoch.toString(),
+          title: AppStrings.newMessage,
+          body: '${roleText(senderRole)}: $text',
+          type: 'new_message',
+          reportId: widget.report.reportId,
+          createdAt: DateTime.now(),
+          read: false,
+        ),
+      );
+
+      messageController.clear();
+    } finally {
+      if (mounted) {
+        setState(() {
+          isSending = false;
+        });
+      }
     }
   }
 
@@ -114,18 +135,16 @@ class _ChatScreenState extends State<ChatScreen> {
       context: context,
       builder: (context) {
         return AlertDialog(
-          title: const Text('מחיקת הודעות'),
-          content: const Text(
-            'האם למחוק את כל הודעות הצ׳אט? הפנייה עצמה לא תימחק.',
-          ),
+          title: Text(AppStrings.deleteMessages),
+          content: Text(AppStrings.deleteMessagesConfirm),
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(context, false),
-              child: const Text('ביטול'),
+              child: Text(AppStrings.cancel),
             ),
             TextButton(
               onPressed: () => Navigator.pop(context, true),
-              child: const Text('מחק'),
+              child: Text(AppStrings.delete),
             ),
           ],
         );
@@ -134,6 +153,11 @@ class _ChatScreenState extends State<ChatScreen> {
 
     if (result == true) {
       await _databaseService.clearChat(
+        reportId: widget.report.reportId,
+        chatType: widget.chatType,
+      );
+
+      await _aiChatbotService.disableBot(
         reportId: widget.report.reportId,
         chatType: widget.chatType,
       );
@@ -152,7 +176,7 @@ class _ChatScreenState extends State<ChatScreen> {
   }
 
   Widget messageStatus(ChatMessageModel message, bool mine) {
-    if (!mine) {
+    if (!mine || message.senderRole == 'ai_bot') {
       return const SizedBox.shrink();
     }
 
@@ -168,130 +192,151 @@ class _ChatScreenState extends State<ChatScreen> {
     );
   }
 
+  Color bubbleColor({
+    required bool mine,
+    required ChatMessageModel message,
+  }) {
+    if (message.senderRole == 'ai_bot') {
+      return Colors.green.shade100;
+    }
+
+    return mine ? Colors.blue : Colors.grey.shade300;
+  }
+
+  Color textColor({
+    required bool mine,
+    required ChatMessageModel message,
+  }) {
+    if (message.senderRole == 'ai_bot') {
+      return Colors.black;
+    }
+
+    return mine ? Colors.white : Colors.black;
+  }
+
   @override
   Widget build(BuildContext context) {
-    return Directionality(
-      textDirection: TextDirection.rtl,
-      child: Scaffold(
-        appBar: AppBar(
-          title: Text(widget.chatTitle),
-          actions: [
-            IconButton(
-              icon: const Icon(Icons.delete),
-              onPressed: confirmClearChat,
-            ),
-          ],
-        ),
-        body: Column(
-          children: [
-            Expanded(
-              child: StreamBuilder<List<ChatMessageModel>>(
-                stream: _databaseService.getChatMessages(
-                  reportId: widget.report.reportId,
-                  chatType: widget.chatType,
-                ),
-                builder: (context, snapshot) {
-                  final messages = snapshot.data ?? [];
-
-                  if (messages.isEmpty) {
-                    return const Center(
-                      child: Text('אין הודעות עדיין'),
-                    );
-                  }
-
-                  return ListView.builder(
-                    padding: const EdgeInsets.all(16),
-                    itemCount: messages.length,
-                    itemBuilder: (context, index) {
-                      final message = messages[index];
-                      final mine = isMe(message);
-
-                      return Align(
-                        alignment:
-                            mine ? Alignment.centerRight : Alignment.centerLeft,
-                        child: Container(
-                          margin: const EdgeInsets.only(bottom: 10),
-                          padding: const EdgeInsets.all(12),
-                          constraints: const BoxConstraints(maxWidth: 280),
-                          decoration: BoxDecoration(
-                            color: mine ? Colors.blue : Colors.grey.shade300,
-                            borderRadius: BorderRadius.circular(16),
-                          ),
-                          child: Column(
-                            crossAxisAlignment: mine
-                                ? CrossAxisAlignment.end
-                                : CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                roleText(message.senderRole),
-                                style: TextStyle(
-                                  fontWeight: FontWeight.bold,
-                                  color: mine ? Colors.white : Colors.black,
-                                ),
-                              ),
-                              const SizedBox(height: 6),
-                              Text(
-                                message.message,
-                                style: TextStyle(
-                                  color: mine ? Colors.white : Colors.black,
-                                  fontSize: 16,
-                                ),
-                              ),
-                              const SizedBox(height: 6),
-                              Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  Text(
-                                    formatTime(message.createdAt),
-                                    style: TextStyle(
-                                      color: mine
-                                          ? Colors.white70
-                                          : Colors.black54,
-                                      fontSize: 12,
-                                    ),
-                                  ),
-                                  if (mine) ...[
-                                    const SizedBox(width: 6),
-                                    messageStatus(message, mine),
-                                  ],
-                                ],
-                              ),
-                            ],
-                          ),
-                        ),
-                      );
-                    },
-                  );
-                },
+    return Scaffold(
+      appBar: AppBar(
+        title: Text(widget.chatTitle),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.delete),
+            onPressed: confirmClearChat,
+          ),
+        ],
+      ),
+      body: Column(
+        children: [
+          Expanded(
+            child: StreamBuilder<List<ChatMessageModel>>(
+              stream: _databaseService.getChatMessages(
+                reportId: widget.report.reportId,
+                chatType: widget.chatType,
               ),
-            ),
-            Padding(
-              padding: const EdgeInsets.all(12),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: TextField(
-                      controller: messageController,
-                      decoration: InputDecoration(
-                        hintText: 'כתוב הודעה...',
-                        border: OutlineInputBorder(
+              builder: (context, snapshot) {
+                final messages = snapshot.data ?? [];
+
+                if (messages.isEmpty) {
+                  return Center(
+                    child: Text(AppStrings.noMessagesYet),
+                  );
+                }
+
+                return ListView.builder(
+                  padding: const EdgeInsets.all(16),
+                  itemCount: messages.length,
+                  itemBuilder: (context, index) {
+                    final message = messages[index];
+                    final mine = isMe(message);
+
+                    return Align(
+                      alignment:
+                          mine ? Alignment.centerRight : Alignment.centerLeft,
+                      child: Container(
+                        margin: const EdgeInsets.only(bottom: 10),
+                        padding: const EdgeInsets.all(12),
+                        constraints: const BoxConstraints(maxWidth: 280),
+                        decoration: BoxDecoration(
+                          color: bubbleColor(mine: mine, message: message),
                           borderRadius: BorderRadius.circular(16),
                         ),
+                        child: Column(
+                          crossAxisAlignment: mine
+                              ? CrossAxisAlignment.end
+                              : CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              roleText(message.senderRole),
+                              style: TextStyle(
+                                fontWeight: FontWeight.bold,
+                                color: textColor(mine: mine, message: message),
+                              ),
+                            ),
+                            const SizedBox(height: 6),
+                            Text(
+                              message.message,
+                              style: TextStyle(
+                                color: textColor(mine: mine, message: message),
+                                fontSize: 16,
+                              ),
+                            ),
+                            const SizedBox(height: 6),
+                            Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Text(
+                                  formatTime(message.createdAt),
+                                  style: TextStyle(
+                                    color: message.senderRole == 'ai_bot'
+                                        ? Colors.black54
+                                        : mine
+                                            ? Colors.white70
+                                            : Colors.black54,
+                                    fontSize: 12,
+                                  ),
+                                ),
+                                if (mine) ...[
+                                  const SizedBox(width: 6),
+                                  messageStatus(message, mine),
+                                ],
+                              ],
+                            ),
+                          ],
+                        ),
+                      ),
+                    );
+                  },
+                );
+              },
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.all(12),
+            child: Row(
+              children: [
+                Expanded(
+                  child: TextField(
+                    controller: messageController,
+                    decoration: InputDecoration(
+                      hintText: AppStrings.writeMessage,
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(16),
                       ),
                     ),
                   ),
-                  const SizedBox(width: 8),
-                  isSending
-                      ? const CircularProgressIndicator()
-                      : IconButton(
-                          icon: const Icon(Icons.send),
-                          onPressed: sendMessage,
-                        ),
-                ],
-              ),
+                ),
+                const SizedBox(width: 8),
+                isSending
+                    ? const CircularProgressIndicator()
+                    : IconButton(
+                        icon: const Icon(Icons.send),
+                        onPressed: sendMessage,
+                      ),
+              ],
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }

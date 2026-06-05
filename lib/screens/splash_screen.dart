@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../constants/app_colors.dart';
+import '../constants/app_strings.dart';
 
 class SplashScreen extends StatelessWidget {
   const SplashScreen({super.key});
@@ -9,10 +10,10 @@ class SplashScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.primary,
-      body: const Center(
+      body: Center(
         child: Text(
-          'Kol Shaket',
-          style: TextStyle(
+          AppStrings.appName,
+          style: const TextStyle(
             color: Colors.white,
             fontSize: 34,
             fontWeight: FontWeight.bold,

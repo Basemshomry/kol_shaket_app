@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../constants/app_strings.dart';
 import '../models/report_model.dart';
 import '../services/realtime_database_service.dart';
 import 'chat_screen.dart';
@@ -25,11 +26,11 @@ class ReportsScreen extends StatelessWidget {
   String getStatusText(String status) {
     switch (status) {
       case 'pending':
-        return 'ממתין לבדיקה';
+        return AppStrings.pending;
       case 'in_progress':
-        return 'בטיפול';
+        return AppStrings.inProgress;
       case 'resolved':
-        return 'טופל';
+        return AppStrings.resolved;
       default:
         return status;
     }
@@ -42,7 +43,7 @@ class ReportsScreen extends StatelessWidget {
         builder: (_) => ChatScreen(
           report: report,
           chatType: 'counselor',
-          chatTitle: 'צ׳אט עם יועצת',
+          chatTitle: '${AppStrings.openChat} ${AppStrings.counselor}',
         ),
       ),
     );
@@ -57,9 +58,7 @@ class ReportsScreen extends StatelessWidget {
       builder: (context, snapshot) {
         final count = snapshot.data ?? 0;
 
-        if (count == 0) {
-          return const SizedBox.shrink();
-        }
+        if (count == 0) return const SizedBox.shrink();
 
         return Container(
           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
@@ -68,7 +67,7 @@ class ReportsScreen extends StatelessWidget {
             borderRadius: BorderRadius.circular(20),
           ),
           child: Text(
-            '$count הודעות חדשות',
+            '$count ${AppStrings.newMessages}',
             style: const TextStyle(color: Colors.white),
           ),
         );
@@ -78,109 +77,109 @@ class ReportsScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Directionality(
-      textDirection: TextDirection.rtl,
-      child: Scaffold(
-        appBar: AppBar(
-          title: const Text('הפניות שלי'),
-        ),
-        body: StreamBuilder<List<ReportModel>>(
-          stream: _databaseService.getMyReports(),
-          builder: (context, snapshot) {
-            if (snapshot.connectionState == ConnectionState.waiting) {
-              return const Center(
-                child: CircularProgressIndicator(),
-              );
-            }
+    return Scaffold(
+      appBar: AppBar(
+        title: Text(AppStrings.myReports),
+      ),
+      body: StreamBuilder<List<ReportModel>>(
+        stream: _databaseService.getMyReports(),
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return const Center(child: CircularProgressIndicator());
+          }
 
-            final reports = snapshot.data ?? [];
+          final reports = snapshot.data ?? [];
 
-            if (reports.isEmpty) {
-              return const Center(
-                child: Text(
-                  'עדיין לא שלחת פניות',
-                  style: TextStyle(fontSize: 18),
+          if (reports.isEmpty) {
+            return Center(
+              child: Text(
+                AppStrings.noReportsYet,
+                style: const TextStyle(fontSize: 18),
+              ),
+            );
+          }
+
+          return ListView.builder(
+            padding: const EdgeInsets.all(16),
+            itemCount: reports.length,
+            itemBuilder: (context, index) {
+              final report = reports[index];
+              final severity =
+                  report.aiAnalyzed ? report.aiSeverity : report.userSeverity;
+
+              return Card(
+                margin: const EdgeInsets.only(bottom: 16),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16),
                 ),
-              );
-            }
-
-            return ListView.builder(
-              padding: const EdgeInsets.all(16),
-              itemCount: reports.length,
-              itemBuilder: (context, index) {
-                final report = reports[index];
-
-                return Card(
-                  margin: const EdgeInsets.only(bottom: 16),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(16),
-                  ),
-                  child: InkWell(
-                    borderRadius: BorderRadius.circular(16),
-                    onTap: () => openCounselorChat(context, report),
-                    child: Padding(
-                      padding: const EdgeInsets.all(16),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: [
-                          Row(
-                            children: [
-                              Expanded(
-                                child: Text(
-                                  report.category,
-                                  style: const TextStyle(
-                                    fontSize: 20,
-                                    fontWeight: FontWeight.bold,
-                                  ),
+                child: InkWell(
+                  borderRadius: BorderRadius.circular(16),
+                  onTap: () => openCounselorChat(context, report),
+                  child: Padding(
+                    padding: const EdgeInsets.all(16),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        Row(
+                          children: [
+                            Expanded(
+                              child: Text(
+                                report.category.isEmpty
+                                    ? AppStrings.reportWithoutCategory
+                                    : report.category,
+                                style: const TextStyle(
+                                  fontSize: 20,
+                                  fontWeight: FontWeight.bold,
                                 ),
                               ),
-                              Container(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 10,
-                                  vertical: 6,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: getStatusColor(report.status),
-                                  borderRadius: BorderRadius.circular(12),
-                                ),
-                                child: Text(
-                                  getStatusText(report.status),
-                                  style: const TextStyle(color: Colors.white),
-                                ),
+                            ),
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 10,
+                                vertical: 6,
                               ),
-                            ],
-                          ),
-                          const SizedBox(height: 12),
-                          unreadBadge(report.reportId),
-                          const SizedBox(height: 12),
-                          Text(
-                            report.description,
-                            style: const TextStyle(fontSize: 16),
-                          ),
-                          const SizedBox(height: 12),
-                          Text(
-                            'רמת חומרה: ${report.userSeverity}',
-                            style: const TextStyle(
-                              fontWeight: FontWeight.bold,
+                              decoration: BoxDecoration(
+                                color: getStatusColor(report.status),
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: Text(
+                                getStatusText(report.status),
+                                style: const TextStyle(color: Colors.white),
+                              ),
                             ),
+                          ],
+                        ),
+                        const SizedBox(height: 12),
+                        unreadBadge(report.reportId),
+                        const SizedBox(height: 12),
+                        Text(
+                          report.description,
+                          style: const TextStyle(fontSize: 16),
+                        ),
+                        const SizedBox(height: 12),
+                        Text(
+                          '${AppStrings.aiSeverity}: $severity',
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            color: severity >= 7 ? Colors.red : Colors.black,
                           ),
-                          const SizedBox(height: 12),
-                          const Text(
-                            'לחץ לפתיחת צ׳אט עם היועצת',
-                            style: TextStyle(
-                              color: Colors.blue,
-                              fontWeight: FontWeight.w600,
-                            ),
+                        ),
+                        const SizedBox(height: 12),
+                        Text(
+                          AppStrings.clickToOpenCounselorChat,
+                          style: const TextStyle(
+                            color: Colors.blue,
+                            fontWeight: FontWeight.w600,
                           ),
-                        ],
-                      ),
+                        ),
+                      ],
                     ),
                   ),
-                );
-              },
-            );
-          },
-        ),
+                ),
+              );
+            },
+          );
+        },
       ),
     );
   }

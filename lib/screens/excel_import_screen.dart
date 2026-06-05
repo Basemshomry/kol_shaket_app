@@ -2,6 +2,7 @@ import 'package:excel/excel.dart' as ex;
 import 'package:file_picker/file_picker.dart' as fp;
 import 'package:flutter/material.dart';
 
+import '../constants/app_strings.dart';
 import '../services/realtime_database_service.dart';
 
 class ExcelImportScreen extends StatefulWidget {
@@ -29,31 +30,21 @@ class _ExcelImportScreenState extends State<ExcelImportScreen> {
       withData: true,
     );
 
-    if (result == null || result.files.single.bytes == null) {
-      return [];
-    }
+    if (result == null || result.files.single.bytes == null) return [];
 
-    final bytes = result.files.single.bytes!;
-    final excel = ex.Excel.decodeBytes(bytes);
+    final excel = ex.Excel.decodeBytes(result.files.single.bytes!);
 
-    if (excel.tables.isEmpty) {
-      return [];
-    }
+    if (excel.tables.isEmpty) return [];
 
-    final firstSheetName = excel.tables.keys.first;
-    final sheet = excel.tables[firstSheetName];
+    final sheet = excel.tables[excel.tables.keys.first];
 
-    if (sheet == null) {
-      return [];
-    }
+    if (sheet == null) return [];
 
     final rows = <List<String>>[];
 
     for (final row in sheet.rows) {
       final values = row.map(cellValue).toList();
-      final hasAnyValue = values.any((value) => value.isNotEmpty);
-
-      if (hasAnyValue) {
+      if (values.any((value) => value.isNotEmpty)) {
         rows.add(values);
       }
     }
@@ -104,16 +95,22 @@ class _ExcelImportScreenState extends State<ExcelImportScreen> {
       await _databaseService.addApprovedStudentsBulk(students);
 
       setState(() {
-        resultMessage = 'יובאו ${students.length} תלמידים בהצלחה';
+        resultMessage = AppStrings.text(
+          he: 'יובאו ${students.length} תלמידים בהצלחה',
+          en: '${students.length} students imported successfully',
+          ar: 'تم استيراد ${students.length} طلاب بنجاح',
+        );
       });
     } catch (e) {
       setState(() {
-        resultMessage = 'שגיאה בייבוא תלמידים: $e';
+        resultMessage = AppStrings.text(
+          he: 'שגיאה בייבוא תלמידים: $e',
+          en: 'Student import error: $e',
+          ar: 'خطأ في استيراد الطلاب: $e',
+        );
       });
     } finally {
-      setState(() {
-        isLoading = false;
-      });
+      setState(() => isLoading = false);
     }
   }
 
@@ -142,16 +139,22 @@ class _ExcelImportScreenState extends State<ExcelImportScreen> {
       await _databaseService.addApprovedAdminsBulk(admins);
 
       setState(() {
-        resultMessage = 'יובאו ${admins.length} אנשי צוות בהצלחה';
+        resultMessage = AppStrings.text(
+          he: 'יובאו ${admins.length} אנשי צוות בהצלחה',
+          en: '${admins.length} staff members imported successfully',
+          ar: 'تم استيراد ${admins.length} من أعضاء الطاقم بنجاح',
+        );
       });
     } catch (e) {
       setState(() {
-        resultMessage = 'שגיאה בייבוא צוות: $e';
+        resultMessage = AppStrings.text(
+          he: 'שגיאה בייבוא צוות: $e',
+          en: 'Staff import error: $e',
+          ar: 'خطأ في استيراد الطاقم: $e',
+        );
       });
     } finally {
-      setState(() {
-        isLoading = false;
-      });
+      setState(() => isLoading = false);
     }
   }
 
@@ -161,24 +164,30 @@ class _ExcelImportScreenState extends State<ExcelImportScreen> {
         padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: const [
+          children: [
             Text(
-              'מבנה קובץ תלמידים:',
-              style: TextStyle(fontWeight: FontWeight.bold),
+              AppStrings.text(
+                he: 'מבנה קובץ תלמידים:',
+                en: 'Students file structure:',
+                ar: 'مبنى ملف الطلاب:',
+              ),
+              style: const TextStyle(fontWeight: FontWeight.bold),
             ),
-            SizedBox(height: 6),
-            Text('idNumber | firstName | lastName | className'),
-            SizedBox(height: 16),
+            const SizedBox(height: 6),
+            const Text('idNumber | firstName | lastName | className'),
+            const SizedBox(height: 16),
             Text(
-              'מבנה קובץ צוות:',
-              style: TextStyle(fontWeight: FontWeight.bold),
+              AppStrings.text(
+                he: 'מבנה קובץ צוות:',
+                en: 'Staff file structure:',
+                ar: 'مبنى ملف الطاقم:',
+              ),
+              style: const TextStyle(fontWeight: FontWeight.bold),
             ),
-            SizedBox(height: 6),
-            Text('idNumber | firstName | lastName | role | className'),
-            SizedBox(height: 8),
-            Text('role יכול להיות: counselor / manager / teacher'),
-            SizedBox(height: 8),
-            Text('למחנך חובה לשים className. ליועצת/מנהל אפשר להשאיר ריק.'),
+            const SizedBox(height: 6),
+            const Text('idNumber | firstName | lastName | role | className'),
+            const SizedBox(height: 8),
+            const Text('role: counselor / manager / teacher'),
           ],
         ),
       ),
@@ -195,58 +204,57 @@ class _ExcelImportScreenState extends State<ExcelImportScreen> {
       child: ElevatedButton.icon(
         onPressed: isLoading ? null : onPressed,
         icon: Icon(icon),
-        label: Text(
-          text,
-          style: const TextStyle(fontSize: 17),
-        ),
+        label: Text(text, style: const TextStyle(fontSize: 17)),
       ),
     );
   }
 
   @override
   Widget build(BuildContext context) {
-    return Directionality(
-      textDirection: TextDirection.rtl,
-      child: Scaffold(
-        appBar: AppBar(
-          title: const Text('ייבוא Excel'),
-        ),
-        body: SingleChildScrollView(
-          padding: const EdgeInsets.all(20),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              instructionsCard(),
-              const SizedBox(height: 24),
-              actionButton(
-                text: 'ייבוא תלמידים מקובץ Excel',
-                icon: Icons.school,
-                onPressed: importStudents,
+    return Scaffold(
+      appBar: AppBar(
+        title: Text(AppStrings.excelImport),
+      ),
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            instructionsCard(),
+            const SizedBox(height: 24),
+            actionButton(
+              text: AppStrings.text(
+                he: 'ייבוא תלמידים מקובץ Excel',
+                en: 'Import students from Excel',
+                ar: 'استيراد الطلاب من Excel',
               ),
-              const SizedBox(height: 16),
-              actionButton(
-                text: 'ייבוא צוות מקובץ Excel',
-                icon: Icons.admin_panel_settings,
-                onPressed: importStaff,
+              icon: Icons.school,
+              onPressed: importStudents,
+            ),
+            const SizedBox(height: 16),
+            actionButton(
+              text: AppStrings.text(
+                he: 'ייבוא צוות מקובץ Excel',
+                en: 'Import staff from Excel',
+                ar: 'استيراد الطاقم من Excel',
               ),
-              const SizedBox(height: 30),
-              if (isLoading)
-                const Center(
-                  child: CircularProgressIndicator(),
-                ),
-              if (resultMessage.isNotEmpty)
-                Card(
-                  child: Padding(
-                    padding: const EdgeInsets.all(16),
-                    child: Text(
-                      resultMessage,
-                      textAlign: TextAlign.center,
-                      style: const TextStyle(fontSize: 16),
-                    ),
+              icon: Icons.admin_panel_settings,
+              onPressed: importStaff,
+            ),
+            const SizedBox(height: 30),
+            if (isLoading) const Center(child: CircularProgressIndicator()),
+            if (resultMessage.isNotEmpty)
+              Card(
+                child: Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Text(
+                    resultMessage,
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(fontSize: 16),
                   ),
                 ),
-            ],
-          ),
+              ),
+          ],
         ),
       ),
     );

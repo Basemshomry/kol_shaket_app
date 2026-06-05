@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
 
+import '../constants/app_strings.dart';
+import '../models/report_model.dart';
 import '../routes/app_routes.dart';
 import '../services/auth_service.dart';
+import '../services/language_service.dart';
 import '../services/realtime_database_service.dart';
 import '../widgets/custom_button.dart';
 import 'excel_import_screen.dart';
@@ -61,7 +64,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
       if (!mounted) return;
 
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('המשתמש נוסף לרשימה המאושרת')),
+        SnackBar(content: Text(AppStrings.approvedUserAdded)),
       );
     } catch (e) {
       if (!mounted) return;
@@ -106,13 +109,37 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
     super.dispose();
   }
 
+  Widget languageButton() {
+    return PopupMenuButton<String>(
+      icon: const Icon(Icons.language),
+      onSelected: (value) {
+        LanguageService.instance.changeLanguage(value);
+      },
+      itemBuilder: (context) => [
+        PopupMenuItem(
+          value: 'he',
+          child: Text(AppStrings.hebrew),
+        ),
+        PopupMenuItem(
+          value: 'en',
+          child: Text(AppStrings.english),
+        ),
+        PopupMenuItem(
+          value: 'ar',
+          child: Text(AppStrings.arabic),
+        ),
+      ],
+    );
+  }
+
   Widget buildInput({
     required String hintText,
     required TextEditingController controller,
   }) {
     return TextField(
       controller: controller,
-      textDirection: TextDirection.rtl,
+      textDirection:
+          LanguageService.instance.isRtl ? TextDirection.rtl : TextDirection.ltr,
       decoration: InputDecoration(
         hintText: hintText,
         border: OutlineInputBorder(
@@ -122,162 +149,208 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
     );
   }
 
+  Widget statCard(String title, int value, IconData icon) {
+    return Card(
+      child: ListTile(
+        leading: Icon(icon, color: Colors.blue),
+        title: Text(title),
+        subtitle: Text(
+          '$value',
+          style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+        ),
+      ),
+    );
+  }
+
+  Widget statsSection() {
+    return StreamBuilder<List<ReportModel>>(
+      stream: _databaseService.getAllReports(),
+      builder: (context, snapshot) {
+        final reports = snapshot.data ?? [];
+        final severe = reports.where((r) {
+          final severity = r.aiAnalyzed ? r.aiSeverity : r.userSeverity;
+          return severity >= 7;
+        }).length;
+        final inProgress =
+            reports.where((r) => r.status == 'in_progress').length;
+        final resolved = reports.where((r) => r.status == 'resolved').length;
+
+        return Column(
+          children: [
+            statCard(AppStrings.totalReports, reports.length, Icons.list_alt),
+            statCard(AppStrings.severeReports, severe, Icons.warning),
+            statCard(AppStrings.inProgress, inProgress, Icons.pending_actions),
+            statCard(AppStrings.resolved, resolved, Icons.check_circle),
+          ],
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
-    return Directionality(
-      textDirection: TextDirection.rtl,
-      child: Scaffold(
-        appBar: AppBar(
-          title: const Text('מערכת ניהול'),
-          actions: [
-            IconButton(
-              icon: const Icon(Icons.logout),
-              onPressed: logout,
-            ),
-          ],
-        ),
-        body: SingleChildScrollView(
-          padding: const EdgeInsets.all(20),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              CustomButton(
-                text: 'צפייה בכל הפניות',
-                onPressed: () {
-                  Navigator.pushNamed(context, AppRoutes.counselorReports);
-                },
+    return AnimatedBuilder(
+      animation: LanguageService.instance,
+      builder: (context, _) {
+        return Scaffold(
+          appBar: AppBar(
+            title: Text(AppStrings.adminSystem),
+            actions: [
+              languageButton(),
+              IconButton(
+                icon: const Icon(Icons.logout),
+                onPressed: logout,
               ),
-              const SizedBox(height: 12),
-              CustomButton(
-                text: 'כל הצ׳אטים',
-                onPressed: () {
-                  Navigator.pushNamed(context, AppRoutes.chats);
-                },
-              ),
-              const SizedBox(height: 12),
-              StreamBuilder<int>(
-                stream: _databaseService.getUnreadNotificationsCount(),
-                builder: (context, snapshot) {
-                  final count = snapshot.data ?? 0;
+            ],
+          ),
+          body: SingleChildScrollView(
+            padding: const EdgeInsets.all(20),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                statsSection(),
+                const SizedBox(height: 20),
+                CustomButton(
+                  text: AppStrings.viewAllReports,
+                  onPressed: () {
+                    Navigator.pushNamed(context, AppRoutes.counselorReports);
+                  },
+                ),
+                const SizedBox(height: 12),
+                CustomButton(
+                  text: AppStrings.allChats,
+                  onPressed: () {
+                    Navigator.pushNamed(context, AppRoutes.chats);
+                  },
+                ),
+                const SizedBox(height: 12),
+                StreamBuilder<int>(
+                  stream: _databaseService.getUnreadNotificationsCount(),
+                  builder: (context, snapshot) {
+                    final count = snapshot.data ?? 0;
 
-                  return CustomButton(
-                    text: count == 0 ? 'התראות' : 'התראות ($count)',
-                    onPressed: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => NotificationsScreen(),
-                        ),
-                      );
-                    },
-                  );
-                },
-              ),
-              const SizedBox(height: 12),
-              CustomButton(
-                text: 'ייבוא Excel',
-                onPressed: openExcelImport,
-              ),
-              const SizedBox(height: 30),
-              const Text(
-                'הוספת משתמש מאושר ידנית',
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  fontSize: 24,
-                  fontWeight: FontWeight.bold,
+                    return CustomButton(
+                      text: count == 0
+                          ? AppStrings.notifications
+                          : '${AppStrings.notifications} ($count)',
+                      onPressed: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => NotificationsScreen(),
+                          ),
+                        );
+                      },
+                    );
+                  },
                 ),
-              ),
-              const SizedBox(height: 24),
-              DropdownButtonFormField<String>(
-                value: selectedType,
-                decoration: InputDecoration(
-                  labelText: 'סוג משתמש',
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(14),
+                const SizedBox(height: 12),
+                CustomButton(
+                  text: AppStrings.excelImport,
+                  onPressed: openExcelImport,
+                ),
+                const SizedBox(height: 30),
+                Text(
+                  AppStrings.addApprovedUserManual,
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(
+                    fontSize: 24,
+                    fontWeight: FontWeight.bold,
                   ),
                 ),
-                items: const [
-                  DropdownMenuItem(
-                    value: 'student',
-                    child: Text('תלמיד'),
-                  ),
-                  DropdownMenuItem(
-                    value: 'admin',
-                    child: Text('צוות בית הספר'),
-                  ),
-                ],
-                onChanged: (value) {
-                  setState(() {
-                    selectedType = value!;
-                    if (selectedType == 'student') {
-                      selectedRole = 'counselor';
-                    }
-                  });
-                },
-              ),
-              const SizedBox(height: 16),
-              buildInput(
-                hintText: 'תעודת זהות',
-                controller: idController,
-              ),
-              const SizedBox(height: 16),
-              buildInput(
-                hintText: 'שם פרטי',
-                controller: firstNameController,
-              ),
-              const SizedBox(height: 16),
-              buildInput(
-                hintText: 'שם משפחה',
-                controller: lastNameController,
-              ),
-              const SizedBox(height: 16),
-              if (selectedType == 'admin')
+                const SizedBox(height: 24),
                 DropdownButtonFormField<String>(
-                  value: selectedRole,
+                  value: selectedType,
                   decoration: InputDecoration(
-                    labelText: 'תפקיד',
+                    labelText: AppStrings.userType,
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(14),
                     ),
                   ),
-                  items: const [
+                  items: [
                     DropdownMenuItem(
-                      value: 'counselor',
-                      child: Text('יועצת'),
+                      value: 'student',
+                      child: Text(AppStrings.student),
                     ),
                     DropdownMenuItem(
-                      value: 'manager',
-                      child: Text('מנהל'),
-                    ),
-                    DropdownMenuItem(
-                      value: 'teacher',
-                      child: Text('מחנך'),
+                      value: 'admin',
+                      child: Text(AppStrings.adminStaff),
                     ),
                   ],
                   onChanged: (value) {
                     setState(() {
-                      selectedRole = value!;
+                      selectedType = value!;
+                      if (selectedType == 'student') {
+                        selectedRole = 'counselor';
+                      }
                     });
                   },
                 ),
-              if (selectedType == 'admin') const SizedBox(height: 16),
-              if (shouldShowClassField)
+                const SizedBox(height: 16),
                 buildInput(
-                  hintText:
-                      selectedType == 'student' ? 'כיתה' : 'כיתה של המחנך',
-                  controller: classController,
+                  hintText: AppStrings.idNumber,
+                  controller: idController,
                 ),
-              const SizedBox(height: 30),
-              isLoading
-                  ? const Center(child: CircularProgressIndicator())
-                  : CustomButton(
-                      text: 'הוסף לרשימה המאושרת',
-                      onPressed: addApprovedUser,
+                const SizedBox(height: 16),
+                buildInput(
+                  hintText: AppStrings.firstName,
+                  controller: firstNameController,
+                ),
+                const SizedBox(height: 16),
+                buildInput(
+                  hintText: AppStrings.lastName,
+                  controller: lastNameController,
+                ),
+                const SizedBox(height: 16),
+                if (selectedType == 'admin')
+                  DropdownButtonFormField<String>(
+                    value: selectedRole,
+                    decoration: InputDecoration(
+                      labelText: AppStrings.role,
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(14),
+                      ),
                     ),
-            ],
+                    items: [
+                      DropdownMenuItem(
+                        value: 'counselor',
+                        child: Text(AppStrings.counselor),
+                      ),
+                      DropdownMenuItem(
+                        value: 'manager',
+                        child: Text(AppStrings.manager),
+                      ),
+                      DropdownMenuItem(
+                        value: 'teacher',
+                        child: Text(AppStrings.teacher),
+                      ),
+                    ],
+                    onChanged: (value) {
+                      setState(() {
+                        selectedRole = value!;
+                      });
+                    },
+                  ),
+                if (selectedType == 'admin') const SizedBox(height: 16),
+                if (shouldShowClassField)
+                  buildInput(
+                    hintText: selectedType == 'student'
+                        ? AppStrings.className
+                        : AppStrings.teacherClass,
+                    controller: classController,
+                  ),
+                const SizedBox(height: 30),
+                isLoading
+                    ? const Center(child: CircularProgressIndicator())
+                    : CustomButton(
+                        text: AppStrings.addToApprovedList,
+                        onPressed: addApprovedUser,
+                      ),
+              ],
+            ),
           ),
-        ),
-      ),
+        );
+      },
     );
   }
 }

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../constants/app_strings.dart';
 import 'chats_screen.dart';
 import 'home_screen.dart';
 import 'profile_screen.dart';
@@ -16,12 +17,12 @@ class MainNavigationScreen extends StatefulWidget {
 class _MainNavigationScreenState extends State<MainNavigationScreen> {
   int currentIndex = 0;
 
-  final List<Widget> screens = [
+  late final List<Widget> screens = [
     HomeScreen(),
-    const Center(
+    Center(
       child: Text(
-        'AI Chat',
-        style: TextStyle(fontSize: 22),
+        AppStrings.ai,
+        style: const TextStyle(fontSize: 22),
       ),
     ),
     ReportsScreen(),
@@ -41,26 +42,26 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
             currentIndex = index;
           });
         },
-        items: const [
+        items: [
           BottomNavigationBarItem(
-            icon: Icon(Icons.home),
-            label: 'בית',
+            icon: const Icon(Icons.home),
+            label: AppStrings.home,
           ),
           BottomNavigationBarItem(
-            icon: Icon(Icons.smart_toy),
-            label: 'AI',
+            icon: const Icon(Icons.smart_toy),
+            label: AppStrings.ai,
           ),
           BottomNavigationBarItem(
-            icon: Icon(Icons.report),
-            label: 'פניות',
+            icon: const Icon(Icons.report),
+            label: AppStrings.reports,
           ),
           BottomNavigationBarItem(
-            icon: Icon(Icons.chat),
-            label: 'צ׳אטים',
+            icon: const Icon(Icons.chat),
+            label: AppStrings.chats,
           ),
           BottomNavigationBarItem(
-            icon: Icon(Icons.person),
-            label: 'פרופיל',
+            icon: const Icon(Icons.person),
+            label: AppStrings.profile,
           ),
         ],
       ),
