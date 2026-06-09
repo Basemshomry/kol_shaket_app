@@ -1,6 +1,7 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
+import '../constants/app_colors.dart';
 import '../constants/app_strings.dart';
 import '../routes/app_routes.dart';
 import '../services/auth_service.dart';
@@ -26,9 +27,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
   Future<void> login() async {
     try {
-      setState(() {
-        isLoading = true;
-      });
+      setState(() => isLoading = true);
 
       final generatedEmail =
           '${idNumberController.text.trim()}@kolshaket.com';
@@ -66,16 +65,10 @@ class _LoginScreenState extends State<LoginScreen> {
       if (!mounted) return;
 
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(AppStrings.wrongLogin),
-        ),
+        SnackBar(content: Text(AppStrings.wrongLogin)),
       );
     } finally {
-      if (mounted) {
-        setState(() {
-          isLoading = false;
-        });
-      }
+      if (mounted) setState(() => isLoading = false);
     }
   }
 
@@ -89,6 +82,7 @@ class _LoginScreenState extends State<LoginScreen> {
   Widget buildInput({
     required String hintText,
     required TextEditingController controller,
+    required IconData icon,
     bool obscureText = false,
   }) {
     return TextField(
@@ -97,52 +91,113 @@ class _LoginScreenState extends State<LoginScreen> {
       textDirection:
           LanguageService.instance.isRtl ? TextDirection.rtl : TextDirection.ltr,
       decoration: InputDecoration(
+        prefixIcon: Icon(icon, color: AppColors.primary),
         hintText: hintText,
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(14),
-        ),
       ),
+    );
+  }
+
+  Widget languageButton() {
+    return PopupMenuButton<String>(
+      icon: const Icon(Icons.language, color: AppColors.primary),
+      onSelected: (value) {
+        LanguageService.instance.changeLanguage(value);
+      },
+      itemBuilder: (context) => [
+        PopupMenuItem(value: 'he', child: Text(AppStrings.hebrew)),
+        PopupMenuItem(value: 'en', child: Text(AppStrings.english)),
+        PopupMenuItem(value: 'ar', child: Text(AppStrings.arabic)),
+      ],
     );
   }
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(AppStrings.login),
-      ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          children: [
-            const SizedBox(height: 50),
-            buildInput(
-              hintText: AppStrings.idNumber,
-              controller: idNumberController,
-            ),
-            const SizedBox(height: 16),
-            buildInput(
-              hintText: AppStrings.password,
-              controller: passwordController,
-              obscureText: true,
-            ),
-            const SizedBox(height: 30),
-            isLoading
-                ? const CircularProgressIndicator()
-                : CustomButton(
-                    text: AppStrings.loginButton,
-                    onPressed: login,
+    return AnimatedBuilder(
+      animation: LanguageService.instance,
+      builder: (context, _) {
+        return Scaffold(
+          body: SafeArea(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.all(24),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Align(
+                    alignment: AlignmentDirectional.topEnd,
+                    child: languageButton(),
                   ),
-            const SizedBox(height: 20),
-            TextButton(
-              onPressed: () {
-                Navigator.pushNamed(context, AppRoutes.register);
-              },
-              child: Text(AppStrings.noAccountRegister),
+                  const SizedBox(height: 30),
+                  Container(
+                    width: 88,
+                    height: 88,
+                    decoration: BoxDecoration(
+                      color: AppColors.primaryLight,
+                      borderRadius: BorderRadius.circular(28),
+                    ),
+                    child: const Icon(
+                      Icons.shield_outlined,
+                      size: 46,
+                      color: AppColors.primary,
+                    ),
+                  ),
+                  const SizedBox(height: 24),
+                  Text(
+                    AppStrings.appName,
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(
+                      fontSize: 34,
+                      fontWeight: FontWeight.w800,
+                      color: AppColors.textPrimary,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    AppStrings.text(
+                      he: 'מקום בטוח לשיתוף וקבלת עזרה',
+                      en: 'A safe place to share and get help',
+                      ar: 'مكان آمن للمشاركة وطلب المساعدة',
+                    ),
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(
+                      fontSize: 16,
+                      color: AppColors.textSecondary,
+                    ),
+                  ),
+                  const SizedBox(height: 42),
+                  buildInput(
+                    hintText: AppStrings.idNumber,
+                    controller: idNumberController,
+                    icon: Icons.badge_outlined,
+                  ),
+                  const SizedBox(height: 16),
+                  buildInput(
+                    hintText: AppStrings.password,
+                    controller: passwordController,
+                    icon: Icons.lock_outline,
+                    obscureText: true,
+                  ),
+                  const SizedBox(height: 28),
+                  isLoading
+                      ? const Center(child: CircularProgressIndicator())
+                      : CustomButton(
+                          text: AppStrings.loginButton,
+                          icon: Icons.login,
+                          onPressed: login,
+                        ),
+                  const SizedBox(height: 18),
+                  TextButton(
+                    onPressed: () {
+                      Navigator.pushNamed(context, AppRoutes.register);
+                    },
+                    child: Text(AppStrings.noAccountRegister),
+                  ),
+                ],
+              ),
             ),
-          ],
-        ),
-      ),
+          ),
+        );
+      },
     );
   }
 }

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../constants/app_colors.dart';
 import '../constants/app_strings.dart';
 import 'chats_screen.dart';
 import 'home_screen.dart';
@@ -34,33 +35,41 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       body: screens[currentIndex],
-      bottomNavigationBar: BottomNavigationBar(
-        currentIndex: currentIndex,
-        type: BottomNavigationBarType.fixed,
-        onTap: (index) {
+      bottomNavigationBar: NavigationBar(
+        selectedIndex: currentIndex,
+        backgroundColor: AppColors.surface,
+        indicatorColor: AppColors.primaryLight,
+        elevation: 8,
+        onDestinationSelected: (index) {
           setState(() {
             currentIndex = index;
           });
         },
-        items: [
-          BottomNavigationBarItem(
-            icon: const Icon(Icons.home),
+        destinations: [
+          NavigationDestination(
+            icon: const Icon(Icons.home_outlined),
+            selectedIcon: const Icon(Icons.home, color: AppColors.primary),
             label: AppStrings.home,
           ),
-          BottomNavigationBarItem(
-            icon: const Icon(Icons.smart_toy),
+          NavigationDestination(
+            icon: const Icon(Icons.smart_toy_outlined),
+            selectedIcon: const Icon(Icons.smart_toy, color: AppColors.primary),
             label: AppStrings.ai,
           ),
-          BottomNavigationBarItem(
-            icon: const Icon(Icons.report),
+          NavigationDestination(
+            icon: const Icon(Icons.report_outlined),
+            selectedIcon: const Icon(Icons.report, color: AppColors.primary),
             label: AppStrings.reports,
           ),
-          BottomNavigationBarItem(
-            icon: const Icon(Icons.chat),
+          NavigationDestination(
+            icon: const Icon(Icons.chat_bubble_outline),
+            selectedIcon:
+                const Icon(Icons.chat_bubble, color: AppColors.primary),
             label: AppStrings.chats,
           ),
-          BottomNavigationBarItem(
-            icon: const Icon(Icons.person),
+          NavigationDestination(
+            icon: const Icon(Icons.person_outline),
+            selectedIcon: const Icon(Icons.person, color: AppColors.primary),
             label: AppStrings.profile,
           ),
         ],

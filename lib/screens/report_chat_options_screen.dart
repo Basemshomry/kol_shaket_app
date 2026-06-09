@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../constants/app_colors.dart';
 import '../constants/app_strings.dart';
 import '../models/app_user.dart';
 import '../models/report_model.dart';
@@ -33,13 +34,26 @@ class ReportChatOptionsScreen extends StatelessWidget {
   IconData roleIcon(String chatType) {
     switch (chatType) {
       case 'counselor':
-        return Icons.support_agent;
+        return Icons.support_agent_rounded;
       case 'teacher':
-        return Icons.school;
+        return Icons.school_rounded;
       case 'manager':
-        return Icons.admin_panel_settings;
+        return Icons.admin_panel_settings_rounded;
       default:
-        return Icons.person;
+        return Icons.person_rounded;
+    }
+  }
+
+  Color roleColor(String chatType) {
+    switch (chatType) {
+      case 'counselor':
+        return AppColors.primary;
+      case 'teacher':
+        return AppColors.success;
+      case 'manager':
+        return AppColors.secondary;
+      default:
+        return AppColors.grey;
     }
   }
 
@@ -54,6 +68,12 @@ class ReportChatOptionsScreen extends StatelessWidget {
       default:
         return status;
     }
+  }
+
+  Color severityColor(int severity) {
+    if (severity >= 8) return AppColors.error;
+    if (severity >= 5) return AppColors.warning;
+    return AppColors.success;
   }
 
   List<String> chatTypesForUser() {
@@ -100,35 +120,167 @@ class ReportChatOptionsScreen extends StatelessWidget {
 
         if (count == 0) return const SizedBox.shrink();
 
-        return CircleAvatar(
-          radius: 14,
-          backgroundColor: Colors.red,
+        return Container(
+          padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
+          decoration: BoxDecoration(
+            color: AppColors.error,
+            borderRadius: BorderRadius.circular(999),
+          ),
           child: Text(
             '$count',
-            style: const TextStyle(color: Colors.white, fontSize: 12),
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 12,
+              fontWeight: FontWeight.w900,
+            ),
           ),
         );
       },
     );
   }
 
-  Widget buildChatOption(BuildContext context, String chatType) {
-    return Card(
-      margin: const EdgeInsets.only(bottom: 14),
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
+  Widget summaryCard() {
+    final severity = report.aiAnalyzed ? report.aiSeverity : report.userSeverity;
+    final color = severityColor(severity);
+
+    return Container(
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: AppColors.border),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.035),
+            blurRadius: 16,
+            offset: const Offset(0, 8),
+          ),
+        ],
       ),
-      child: ListTile(
-        onTap: () => openChat(context, chatType),
-        leading: CircleAvatar(
-          child: Icon(roleIcon(chatType)),
+      child: Row(
+        children: [
+          Container(
+            width: 54,
+            height: 54,
+            decoration: BoxDecoration(
+              color: color.withValues(alpha: 0.12),
+              borderRadius: BorderRadius.circular(18),
+            ),
+            child: Icon(
+              Icons.assignment_rounded,
+              color: color,
+              size: 30,
+            ),
+          ),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  report.category.isEmpty
+                      ? AppStrings.reportWithoutCategory
+                      : report.category,
+                  style: const TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w900,
+                    color: AppColors.textPrimary,
+                  ),
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  '${AppStrings.status}: ${statusText(report.status)}',
+                  style: const TextStyle(
+                    color: AppColors.textSecondary,
+                    fontSize: 13.5,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  '$severity/10 • ${AppStrings.aiSeverity}',
+                  style: TextStyle(
+                    color: color,
+                    fontWeight: FontWeight.w900,
+                    fontSize: 14,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget buildChatOption(BuildContext context, String chatType) {
+    final color = roleColor(chatType);
+
+    return InkWell(
+      borderRadius: BorderRadius.circular(24),
+      onTap: () => openChat(context, chatType),
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 14),
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: AppColors.surface,
+          borderRadius: BorderRadius.circular(24),
+          border: Border.all(color: AppColors.border),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.035),
+              blurRadius: 16,
+              offset: const Offset(0, 8),
+            ),
+          ],
         ),
-        title: Text(
-          '${AppStrings.openChat} ${roleLabel(chatType)}',
-          style: const TextStyle(fontWeight: FontWeight.bold),
+        child: Row(
+          children: [
+            Container(
+              width: 56,
+              height: 56,
+              decoration: BoxDecoration(
+                color: color.withValues(alpha: 0.12),
+                borderRadius: BorderRadius.circular(18),
+              ),
+              child: Icon(
+                roleIcon(chatType),
+                color: color,
+                size: 30,
+              ),
+            ),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    '${AppStrings.openChat} ${roleLabel(chatType)}',
+                    style: const TextStyle(
+                      fontSize: 17,
+                      fontWeight: FontWeight.w900,
+                      color: AppColors.textPrimary,
+                    ),
+                  ),
+                  const SizedBox(height: 5),
+                  Text(
+                    AppStrings.separateSavedChat,
+                    style: const TextStyle(
+                      color: AppColors.textSecondary,
+                      fontSize: 13.5,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            unreadBadge(chatType),
+            const SizedBox(width: 8),
+            const Icon(
+              Icons.arrow_forward_ios_rounded,
+              size: 16,
+              color: AppColors.textSecondary,
+            ),
+          ],
         ),
-        subtitle: Text(AppStrings.separateSavedChat),
-        trailing: unreadBadge(chatType),
       ),
     );
   }
@@ -138,38 +290,28 @@ class ReportChatOptionsScreen extends StatelessWidget {
     final chatTypes = chatTypesForUser();
 
     return Scaffold(
+      backgroundColor: AppColors.background,
       appBar: AppBar(
         title: Text(AppStrings.chooseChat),
       ),
-      body: Padding(
+      body: ListView(
         padding: const EdgeInsets.all(20),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Card(
-              margin: const EdgeInsets.only(bottom: 20),
-              child: ListTile(
-                title: Text(
-                  report.category.isEmpty
-                      ? AppStrings.reportWithoutCategory
-                      : report.category,
-                  style: const TextStyle(fontWeight: FontWeight.bold),
-                ),
-                subtitle: Text(
-                  '${AppStrings.status}: ${statusText(report.status)} | ${AppStrings.aiSeverity}: ${report.aiSeverity}',
-                ),
-              ),
+        children: [
+          summaryCard(),
+          const SizedBox(height: 28),
+          Text(
+            AppStrings.chooseWhoToChatWith,
+            style: const TextStyle(
+              fontSize: 22,
+              fontWeight: FontWeight.w900,
+              color: AppColors.textPrimary,
             ),
-            Text(
-              AppStrings.chooseWhoToChatWith,
-              style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 16),
-            ...chatTypes.map(
-              (chatType) => buildChatOption(context, chatType),
-            ),
-          ],
-        ),
+          ),
+          const SizedBox(height: 16),
+          ...chatTypes.map(
+            (chatType) => buildChatOption(context, chatType),
+          ),
+        ],
       ),
     );
   }
