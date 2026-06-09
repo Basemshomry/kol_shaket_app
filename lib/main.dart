@@ -36,7 +36,7 @@ class KolShaketApp extends StatelessWidget {
             debugShowCheckedModeBanner: false,
             title: 'Kol Shaket',
             theme: AppTheme.lightTheme,
-            initialRoute: AppRoutes.login,
+            initialRoute: AppRoutes.splash,
             routes: AppRoutes.routes,
             builder: (context, child) {
               return Directionality(

@@ -6,6 +6,7 @@ import '../models/app_user.dart';
 import '../models/report_model.dart';
 import '../services/realtime_database_service.dart';
 import 'report_details_screen.dart';
+import '../utils/app_page_route.dart';
 
 class CounselorReportsScreen extends StatefulWidget {
   const CounselorReportsScreen({super.key});
@@ -82,8 +83,8 @@ class _CounselorReportsScreenState extends State<CounselorReportsScreen> {
   void openDetails(ReportModel report) {
     Navigator.push(
       context,
-      MaterialPageRoute(
-        builder: (_) => ReportDetailsScreen(report: report),
+      AppPageRoute(
+        page: ReportDetailsScreen(report: report),
       ),
     );
   }

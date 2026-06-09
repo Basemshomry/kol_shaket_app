@@ -7,6 +7,7 @@ import '../models/report_model.dart';
 import '../services/realtime_database_service.dart';
 import 'chat_screen.dart';
 import 'report_details_screen.dart';
+import '../utils/app_page_route.dart';
 
 class NotificationsScreen extends StatelessWidget {
   NotificationsScreen({super.key});
@@ -72,8 +73,8 @@ class NotificationsScreen extends StatelessWidget {
     if (notification.type == 'new_message') {
       Navigator.push(
         context,
-        MaterialPageRoute(
-          builder: (_) => ChatScreen(
+        AppPageRoute(
+          page: ChatScreen(
             report: report,
             chatType: 'counselor',
             chatTitle: AppStrings.chats,
@@ -85,8 +86,8 @@ class NotificationsScreen extends StatelessWidget {
 
     Navigator.push(
       context,
-      MaterialPageRoute(
-        builder: (_) => ReportDetailsScreen(report: report),
+      AppPageRoute(
+        page: ReportDetailsScreen(report: report),
       ),
     );
   }

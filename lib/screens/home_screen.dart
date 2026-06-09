@@ -4,6 +4,7 @@ import '../constants/app_colors.dart';
 import '../constants/app_strings.dart';
 import '../routes/app_routes.dart';
 import '../services/auth_service.dart';
+import '../utils/app_page_route.dart';
 import 'report_form_screen.dart';
 
 class HomeScreen extends StatelessWidget {
@@ -67,8 +68,8 @@ class HomeScreen extends StatelessWidget {
   void openReport(BuildContext context, String category) {
     Navigator.push(
       context,
-      MaterialPageRoute(
-        builder: (_) => ReportFormScreen(category: category),
+      AppPageRoute(
+        page: ReportFormScreen(category: category),
       ),
     );
   }
@@ -85,13 +86,34 @@ class HomeScreen extends StatelessWidget {
     );
   }
 
+  Widget animatedItem({
+    required Widget child,
+    required int index,
+  }) {
+    return TweenAnimationBuilder<double>(
+      tween: Tween(begin: 0, end: 1),
+      duration: Duration(milliseconds: 800 + (index * 140)),
+      curve: Curves.easeOutCubic,
+      builder: (context, value, _) {
+        return Opacity(
+          opacity: value,
+          child: Transform.translate(
+            offset: Offset(0, 35 * (1 - value)),
+            child: child,
+          ),
+        );
+      },
+    );
+  }
+
   Widget categoryCard(BuildContext context, Map<String, dynamic> category) {
     final Color color = category['color'];
 
     return InkWell(
       borderRadius: BorderRadius.circular(22),
       onTap: () => openReport(context, category['title']),
-      child: Container(
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 250),
         padding: const EdgeInsets.all(18),
         decoration: BoxDecoration(
           color: AppColors.surface,
@@ -171,50 +193,57 @@ class HomeScreen extends StatelessWidget {
         child: ListView(
           padding: const EdgeInsets.all(22),
           children: [
-            Container(
-              padding: const EdgeInsets.all(22),
-              decoration: BoxDecoration(
-                gradient: const LinearGradient(
-                  colors: [
-                    AppColors.primary,
-                    AppColors.primaryDark,
+            animatedItem(
+              index: 0,
+              child: Container(
+                padding: const EdgeInsets.all(22),
+                decoration: BoxDecoration(
+                  gradient: const LinearGradient(
+                    colors: [
+                      AppColors.primary,
+                      AppColors.primaryDark,
+                    ],
+                  ),
+                  borderRadius: BorderRadius.circular(26),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Icon(
+                      Icons.health_and_safety_outlined,
+                      color: Colors.white,
+                      size: 42,
+                    ),
+                    const SizedBox(height: 18),
+                    Text(
+                      AppStrings.howCanWeHelp,
+                      style: const TextStyle(
+                        fontSize: 26,
+                        fontWeight: FontWeight.w900,
+                        color: Colors.white,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      AppStrings.chooseReportType,
+                      style: TextStyle(
+                        fontSize: 15,
+                        color: Colors.white.withValues(alpha: 0.88),
+                      ),
+                    ),
                   ],
                 ),
-                borderRadius: BorderRadius.circular(26),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Icon(
-                    Icons.health_and_safety_outlined,
-                    color: Colors.white,
-                    size: 42,
-                  ),
-                  const SizedBox(height: 18),
-                  Text(
-                    AppStrings.howCanWeHelp,
-                    style: const TextStyle(
-                      fontSize: 26,
-                      fontWeight: FontWeight.w900,
-                      color: Colors.white,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    AppStrings.chooseReportType,
-                    style: TextStyle(
-                      fontSize: 15,
-                      color: Colors.white.withValues(alpha: 0.88),
-                    ),
-                  ),
-                ],
               ),
             ),
             const SizedBox(height: 24),
-            ...categories.map(
-              (category) => Padding(
-                padding: const EdgeInsets.only(bottom: 14),
-                child: categoryCard(context, category),
+            ...List.generate(
+              categories.length,
+              (index) => animatedItem(
+                index: index + 1,
+                child: Padding(
+                  padding: const EdgeInsets.only(bottom: 14),
+                  child: categoryCard(context, categories[index]),
+                ),
               ),
             ),
           ],

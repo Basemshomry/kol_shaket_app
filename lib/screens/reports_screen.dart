@@ -5,6 +5,7 @@ import '../constants/app_strings.dart';
 import '../models/report_model.dart';
 import '../services/realtime_database_service.dart';
 import 'chat_screen.dart';
+import '../utils/app_page_route.dart';
 
 class ReportsScreen extends StatelessWidget {
   ReportsScreen({super.key});
@@ -75,8 +76,8 @@ class ReportsScreen extends StatelessWidget {
   void openCounselorChat(BuildContext context, ReportModel report) {
     Navigator.push(
       context,
-      MaterialPageRoute(
-        builder: (_) => ChatScreen(
+      AppPageRoute(
+        page: ChatScreen(
           report: report,
           chatType: 'counselor',
           chatTitle: '${AppStrings.openChat} ${AppStrings.counselor}',

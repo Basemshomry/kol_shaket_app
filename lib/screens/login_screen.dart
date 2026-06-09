@@ -79,6 +79,26 @@ class _LoginScreenState extends State<LoginScreen> {
     super.dispose();
   }
 
+  Widget animatedItem({
+    required Widget child,
+    required int delay,
+  }) {
+    return TweenAnimationBuilder<double>(
+      tween: Tween(begin: 0, end: 1),
+      duration: Duration(milliseconds: 900 + delay),
+      curve: Curves.easeOutCubic,
+      builder: (context, value, _) {
+        return Opacity(
+          opacity: value,
+          child: Transform.translate(
+            offset: Offset(0, 35 * (1 - value)),
+            child: child,
+          ),
+        );
+      },
+    );
+  }
+
   Widget buildInput({
     required String hintText,
     required TextEditingController controller,
@@ -128,69 +148,90 @@ class _LoginScreenState extends State<LoginScreen> {
                     child: languageButton(),
                   ),
                   const SizedBox(height: 30),
-                  Container(
-                    width: 88,
-                    height: 88,
-                    decoration: BoxDecoration(
-                      color: AppColors.primaryLight,
-                      borderRadius: BorderRadius.circular(28),
-                    ),
-                    child: const Icon(
-                      Icons.shield_outlined,
-                      size: 46,
-                      color: AppColors.primary,
+                  animatedItem(
+                    delay: 0,
+                    child: Container(
+                      width: 88,
+                      height: 88,
+                      decoration: BoxDecoration(
+                        color: AppColors.primaryLight,
+                        borderRadius: BorderRadius.circular(28),
+                      ),
+                      child: const Icon(
+                        Icons.shield_outlined,
+                        size: 46,
+                        color: AppColors.primary,
+                      ),
                     ),
                   ),
                   const SizedBox(height: 24),
-                  Text(
-                    AppStrings.appName,
-                    textAlign: TextAlign.center,
-                    style: const TextStyle(
-                      fontSize: 34,
-                      fontWeight: FontWeight.w800,
-                      color: AppColors.textPrimary,
+                  animatedItem(
+                    delay: 120,
+                    child: Text(
+                      AppStrings.appName,
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(
+                        fontSize: 34,
+                        fontWeight: FontWeight.w800,
+                        color: AppColors.textPrimary,
+                      ),
                     ),
                   ),
                   const SizedBox(height: 8),
-                  Text(
-                    AppStrings.text(
-                      he: 'מקום בטוח לשיתוף וקבלת עזרה',
-                      en: 'A safe place to share and get help',
-                      ar: 'مكان آمن للمشاركة وطلب المساعدة',
-                    ),
-                    textAlign: TextAlign.center,
-                    style: const TextStyle(
-                      fontSize: 16,
-                      color: AppColors.textSecondary,
+                  animatedItem(
+                    delay: 220,
+                    child: Text(
+                      AppStrings.text(
+                        he: 'מקום בטוח לשיתוף וקבלת עזרה',
+                        en: 'A safe place to share and get help',
+                        ar: 'مكان آمن للمشاركة وطلب المساعدة',
+                      ),
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(
+                        fontSize: 16,
+                        color: AppColors.textSecondary,
+                      ),
                     ),
                   ),
                   const SizedBox(height: 42),
-                  buildInput(
-                    hintText: AppStrings.idNumber,
-                    controller: idNumberController,
-                    icon: Icons.badge_outlined,
+                  animatedItem(
+                    delay: 320,
+                    child: buildInput(
+                      hintText: AppStrings.idNumber,
+                      controller: idNumberController,
+                      icon: Icons.badge_outlined,
+                    ),
                   ),
                   const SizedBox(height: 16),
-                  buildInput(
-                    hintText: AppStrings.password,
-                    controller: passwordController,
-                    icon: Icons.lock_outline,
-                    obscureText: true,
+                  animatedItem(
+                    delay: 420,
+                    child: buildInput(
+                      hintText: AppStrings.password,
+                      controller: passwordController,
+                      icon: Icons.lock_outline,
+                      obscureText: true,
+                    ),
                   ),
                   const SizedBox(height: 28),
-                  isLoading
-                      ? const Center(child: CircularProgressIndicator())
-                      : CustomButton(
-                          text: AppStrings.loginButton,
-                          icon: Icons.login,
-                          onPressed: login,
-                        ),
+                  animatedItem(
+                    delay: 520,
+                    child: isLoading
+                        ? const Center(child: CircularProgressIndicator())
+                        : CustomButton(
+                            text: AppStrings.loginButton,
+                            icon: Icons.login,
+                            onPressed: login,
+                          ),
+                  ),
                   const SizedBox(height: 18),
-                  TextButton(
-                    onPressed: () {
-                      Navigator.pushNamed(context, AppRoutes.register);
-                    },
-                    child: Text(AppStrings.noAccountRegister),
+                  animatedItem(
+                    delay: 620,
+                    child: TextButton(
+                      onPressed: () {
+                        Navigator.pushNamed(context, AppRoutes.register);
+                      },
+                      child: Text(AppStrings.noAccountRegister),
+                    ),
                   ),
                 ],
               ),

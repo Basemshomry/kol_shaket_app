@@ -7,6 +7,7 @@ import '../models/app_user.dart';
 import '../models/report_model.dart';
 import '../services/realtime_database_service.dart';
 import 'chat_screen.dart';
+import '../utils/app_page_route.dart';
 
 class ReportDetailsScreen extends StatelessWidget {
   ReportDetailsScreen({
@@ -444,8 +445,8 @@ class ReportDetailsScreen extends StatelessWidget {
       onPressed: () {
         Navigator.push(
           context,
-          MaterialPageRoute(
-            builder: (_) => ChatScreen(
+          AppPageRoute(
+            page: ChatScreen(
               report: report,
               chatType: chatType,
               chatTitle: studentName.isEmpty
