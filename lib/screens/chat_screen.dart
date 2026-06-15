@@ -56,6 +56,19 @@ class _ChatScreenState extends State<ChatScreen> {
     return '$hour:$minute';
   }
 
+  String statusText(String status) {
+    switch (status) {
+      case 'pending':
+        return AppStrings.pending;
+      case 'in_progress':
+        return AppStrings.inProgress;
+      case 'resolved':
+        return AppStrings.resolved;
+      default:
+        return status;
+    }
+  }
+
   String roleText(String role) {
     switch (role) {
       case 'student':
@@ -90,6 +103,12 @@ class _ChatScreenState extends State<ChatScreen> {
     }
   }
 
+  Color severityColor(int severity) {
+    if (severity >= 8) return AppColors.error;
+    if (severity >= 5) return AppColors.warning;
+    return AppColors.success;
+  }
+
   bool isMe(ChatMessageModel message) {
     final currentUser = FirebaseAuth.instance.currentUser;
     return currentUser != null && message.senderId == currentUser.uid;
@@ -102,8 +121,8 @@ class _ChatScreenState extends State<ChatScreen> {
 
     scrollController.animateTo(
       scrollController.position.maxScrollExtent,
-      duration: const Duration(milliseconds: 250),
-      curve: Curves.easeOut,
+      duration: const Duration(milliseconds: 260),
+      curve: Curves.easeOutCubic,
     );
   }
 
@@ -203,6 +222,79 @@ class _ChatScreenState extends State<ChatScreen> {
     }
   }
 
+  Widget chatHeader() {
+    final severity = widget.report.aiAnalyzed
+        ? widget.report.aiSeverity
+        : widget.report.userSeverity;
+
+    final color = severityColor(severity);
+
+    return Container(
+      margin: const EdgeInsets.fromLTRB(14, 12, 14, 4),
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(22),
+        border: Border.all(color: AppColors.border),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.025),
+            blurRadius: 12,
+            offset: const Offset(0, 6),
+          ),
+        ],
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 44,
+            height: 44,
+            decoration: BoxDecoration(
+              color: color.withValues(alpha: 0.12),
+              borderRadius: BorderRadius.circular(15),
+            ),
+            child: Icon(
+              Icons.assignment_rounded,
+              color: color,
+              size: 25,
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  widget.report.category.isEmpty
+                      ? AppStrings.reportWithoutCategory
+                      : widget.report.category,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    color: AppColors.textPrimary,
+                    fontSize: 15.5,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  '${AppStrings.status}: ${statusText(widget.report.status)} • $severity/10',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    color: AppColors.textSecondary,
+                    fontSize: 12.5,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget messageStatus(ChatMessageModel message, bool mine) {
     if (!mine || message.senderRole == 'ai_bot') {
       return const SizedBox.shrink();
@@ -213,14 +305,14 @@ class _ChatScreenState extends State<ChatScreen> {
     return Text(
       isRead ? '✓✓' : '✓',
       style: TextStyle(
-        color: isRead ? AppColors.success : Colors.white70,
+        color: isRead ? Colors.lightGreenAccent : Colors.white70,
         fontSize: 12,
         fontWeight: FontWeight.bold,
       ),
     );
   }
 
-  Widget messageBubble(ChatMessageModel message) {
+  Widget messageBubble(ChatMessageModel message, int index) {
     final mine = isMe(message);
     final isAi = message.senderRole == 'ai_bot';
 
@@ -237,108 +329,175 @@ class _ChatScreenState extends State<ChatScreen> {
             : AppColors.border;
 
     final textColor = mine && !isAi ? Colors.white : AppColors.textPrimary;
-    final width = MediaQuery.of(context).size.width * 0.74;
+    final maxWidth = MediaQuery.of(context).size.width * 0.78;
 
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 14),
-      child: Row(
-        mainAxisAlignment:
-            mine ? MainAxisAlignment.end : MainAxisAlignment.start,
-        crossAxisAlignment: CrossAxisAlignment.end,
-        children: [
-          if (!mine) ...[
-            CircleAvatar(
-              radius: 18,
-              backgroundColor:
-                  isAi ? AppColors.primary : AppColors.primaryLight,
-              child: Icon(
-                roleIcon(message.senderRole),
-                size: 18,
-                color: isAi ? Colors.white : AppColors.primary,
-              ),
-            ),
-            const SizedBox(width: 8),
-          ],
-          Flexible(
-            child: Container(
-              constraints: BoxConstraints(maxWidth: width),
-              padding: const EdgeInsets.symmetric(
-                horizontal: 15,
-                vertical: 12,
-              ),
-              decoration: BoxDecoration(
-                color: bubbleColor,
-                borderRadius: BorderRadius.only(
-                  topLeft: const Radius.circular(20),
-                  topRight: const Radius.circular(20),
-                  bottomLeft: Radius.circular(mine ? 20 : 6),
-                  bottomRight: Radius.circular(mine ? 6 : 20),
-                ),
-                border: Border.all(color: borderColor),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.025),
-                    blurRadius: 12,
-                    offset: const Offset(0, 6),
-                  ),
-                ],
-              ),
-              child: Column(
-                crossAxisAlignment:
-                    mine ? CrossAxisAlignment.end : CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    roleText(message.senderRole),
-                    style: TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w900,
-                      color: mine && !isAi ? Colors.white70 : AppColors.primary,
-                    ),
-                  ),
-                  const SizedBox(height: 6),
-                  Text(
-                    message.message,
-                    style: TextStyle(
-                      color: textColor,
-                      fontSize: 15.5,
-                      height: 1.4,
-                    ),
-                  ),
-                  const SizedBox(height: 7),
-                  Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text(
-                        formatTime(message.createdAt),
-                        style: TextStyle(
-                          color: mine && !isAi
-                              ? Colors.white70
-                              : AppColors.textSecondary,
-                          fontSize: 11.5,
-                        ),
-                      ),
-                      if (mine) ...[
-                        const SizedBox(width: 6),
-                        messageStatus(message, mine),
-                      ],
-                    ],
-                  ),
-                ],
-              ),
-            ),
+    return TweenAnimationBuilder<double>(
+      tween: Tween(begin: 0, end: 1),
+      duration: Duration(milliseconds: 260 + (index.clamp(0, 6) * 25)),
+      curve: Curves.easeOutCubic,
+      builder: (context, value, child) {
+        return Opacity(
+          opacity: value,
+          child: Transform.translate(
+            offset: Offset(0, 14 * (1 - value)),
+            child: child,
           ),
-        ],
+        );
+      },
+      child: Padding(
+        padding: const EdgeInsets.only(bottom: 13),
+        child: Row(
+          mainAxisAlignment:
+              mine ? MainAxisAlignment.end : MainAxisAlignment.start,
+          crossAxisAlignment: CrossAxisAlignment.end,
+          children: [
+            if (!mine) ...[
+              CircleAvatar(
+                radius: 18,
+                backgroundColor:
+                    isAi ? AppColors.primary : AppColors.primaryLight,
+                child: Icon(
+                  roleIcon(message.senderRole),
+                  size: 18,
+                  color: isAi ? Colors.white : AppColors.primary,
+                ),
+              ),
+              const SizedBox(width: 8),
+            ],
+            Flexible(
+              child: Container(
+                constraints: BoxConstraints(maxWidth: maxWidth),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 15,
+                  vertical: 12,
+                ),
+                decoration: BoxDecoration(
+                  color: bubbleColor,
+                  borderRadius: BorderRadius.only(
+                    topLeft: const Radius.circular(22),
+                    topRight: const Radius.circular(22),
+                    bottomLeft: Radius.circular(mine ? 22 : 7),
+                    bottomRight: Radius.circular(mine ? 7 : 22),
+                  ),
+                  border: Border.all(color: borderColor),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.025),
+                      blurRadius: 12,
+                      offset: const Offset(0, 6),
+                    ),
+                  ],
+                ),
+                child: Column(
+                  crossAxisAlignment:
+                      mine ? CrossAxisAlignment.end : CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          roleIcon(message.senderRole),
+                          size: 14,
+                          color:
+                              mine && !isAi ? Colors.white70 : AppColors.primary,
+                        ),
+                        const SizedBox(width: 5),
+                        Text(
+                          roleText(message.senderRole),
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w900,
+                            color: mine && !isAi
+                                ? Colors.white70
+                                : AppColors.primary,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      message.message,
+                      style: TextStyle(
+                        color: textColor,
+                        fontSize: 15.8,
+                        height: 1.42,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                    const SizedBox(height: 7),
+                    Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          formatTime(message.createdAt),
+                          style: TextStyle(
+                            color: mine && !isAi
+                                ? Colors.white70
+                                : AppColors.textSecondary,
+                            fontSize: 11.5,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        if (mine) ...[
+                          const SizedBox(width: 6),
+                          messageStatus(message, mine),
+                        ],
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
 
   Widget emptyState() {
     return Center(
-      child: Text(
-        AppStrings.noMessagesYet,
-        style: const TextStyle(
-          color: AppColors.textSecondary,
-          fontWeight: FontWeight.w700,
+      child: Padding(
+        padding: const EdgeInsets.all(30),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 86,
+              height: 86,
+              decoration: BoxDecoration(
+                color: AppColors.primaryLight,
+                borderRadius: BorderRadius.circular(28),
+              ),
+              child: const Icon(
+                Icons.chat_bubble_outline_rounded,
+                size: 42,
+                color: AppColors.primary,
+              ),
+            ),
+            const SizedBox(height: 18),
+            Text(
+              AppStrings.noMessagesYet,
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                color: AppColors.textPrimary,
+                fontSize: 20,
+                fontWeight: FontWeight.w900,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              AppStrings.text(
+                he: 'שלח הודעה כדי להתחיל את השיחה',
+                en: 'Send a message to start the conversation',
+                ar: 'أرسل رسالة لبدء المحادثة',
+              ),
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                color: AppColors.textSecondary,
+                fontSize: 14,
+              ),
+            ),
+          ],
         ),
       ),
     );
@@ -362,6 +521,7 @@ class _ChatScreenState extends State<ChatScreen> {
                 controller: messageController,
                 minLines: 1,
                 maxLines: 4,
+                textInputAction: TextInputAction.newline,
                 decoration: InputDecoration(
                   hintText: AppStrings.writeMessage,
                   filled: true,
@@ -371,30 +531,34 @@ class _ChatScreenState extends State<ChatScreen> {
                     vertical: 13,
                   ),
                   border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(22),
+                    borderRadius: BorderRadius.circular(24),
                     borderSide: const BorderSide(color: AppColors.border),
                   ),
                 ),
               ),
             ),
             const SizedBox(width: 8),
-            SizedBox(
-              width: 48,
-              height: 48,
-              child: isSending
-                  ? const Padding(
-                      padding: EdgeInsets.all(12),
-                      child: CircularProgressIndicator(strokeWidth: 2.4),
-                    )
-                  : ElevatedButton(
-                      onPressed: sendMessage,
-                      style: ElevatedButton.styleFrom(
-                        padding: EdgeInsets.zero,
-                        shape: const CircleBorder(),
-                        minimumSize: const Size(48, 48),
+            AnimatedScale(
+              scale: isSending ? 0.92 : 1,
+              duration: const Duration(milliseconds: 140),
+              child: SizedBox(
+                width: 48,
+                height: 48,
+                child: isSending
+                    ? const Padding(
+                        padding: EdgeInsets.all(12),
+                        child: CircularProgressIndicator(strokeWidth: 2.4),
+                      )
+                    : ElevatedButton(
+                        onPressed: sendMessage,
+                        style: ElevatedButton.styleFrom(
+                          padding: EdgeInsets.zero,
+                          shape: const CircleBorder(),
+                          minimumSize: const Size(48, 48),
+                        ),
+                        child: const Icon(Icons.send_rounded, size: 21),
                       ),
-                      child: const Icon(Icons.send_rounded, size: 21),
-                    ),
+              ),
             ),
           ],
         ),
@@ -417,6 +581,7 @@ class _ChatScreenState extends State<ChatScreen> {
       ),
       body: Column(
         children: [
+          chatHeader(),
           Expanded(
             child: StreamBuilder<List<ChatMessageModel>>(
               stream: _databaseService.getChatMessages(
@@ -436,10 +601,10 @@ class _ChatScreenState extends State<ChatScreen> {
 
                 return ListView.builder(
                   controller: scrollController,
-                  padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+                  padding: const EdgeInsets.fromLTRB(16, 14, 16, 8),
                   itemCount: messages.length,
                   itemBuilder: (context, index) {
-                    return messageBubble(messages[index]);
+                    return messageBubble(messages[index], index);
                   },
                 );
               },

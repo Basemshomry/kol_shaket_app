@@ -6,8 +6,9 @@ import '../constants/app_strings.dart';
 import '../models/app_user.dart';
 import '../models/report_model.dart';
 import '../services/realtime_database_service.dart';
-import 'chat_screen.dart';
 import '../utils/app_page_route.dart';
+import '../widgets/severity_progress_bar.dart';
+import 'chat_screen.dart';
 
 class ReportDetailsScreen extends StatelessWidget {
   ReportDetailsScreen({
@@ -28,19 +29,6 @@ class ReportDetailsScreen extends StatelessWidget {
         return AppStrings.resolved;
       default:
         return status;
-    }
-  }
-
-  Color statusColor(String status) {
-    switch (status) {
-      case 'pending':
-        return AppColors.warning;
-      case 'in_progress':
-        return AppColors.primary;
-      case 'resolved':
-        return AppColors.success;
-      default:
-        return AppColors.grey;
     }
   }
 
@@ -92,7 +80,6 @@ class ReportDetailsScreen extends StatelessWidget {
 
   Widget heroCard() {
     final severity = report.aiAnalyzed ? report.aiSeverity : report.userSeverity;
-    final color = severityColor(severity);
 
     return Container(
       padding: const EdgeInsets.all(22),
@@ -142,8 +129,8 @@ class ReportDetailsScreen extends StatelessWidget {
             ),
             child: Text(
               '$severity/10 • ${AppStrings.aiSeverity}',
-              style: TextStyle(
-                color: color == AppColors.error ? Colors.white : Colors.white,
+              style: const TextStyle(
+                color: Colors.white,
                 fontSize: 15,
                 fontWeight: FontWeight.w900,
               ),
@@ -196,16 +183,15 @@ class ReportDetailsScreen extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 16),
+          SeverityProgressBar(
+            severity: report.aiSeverity,
+            title: AppStrings.aiSeverity,
+          ),
+          const SizedBox(height: 16),
           detailLine(
             icon: Icons.check_circle_outline_rounded,
             title: AppStrings.analyzed,
             value: report.aiAnalyzed ? AppStrings.yes : AppStrings.no,
-          ),
-          detailLine(
-            icon: Icons.monitor_heart_outlined,
-            title: AppStrings.aiSeverity,
-            value: '${report.aiSeverity}/10',
-            valueColor: color,
           ),
           detailLine(
             icon: Icons.warning_amber_rounded,
@@ -339,16 +325,13 @@ class ReportDetailsScreen extends StatelessWidget {
   }
 
   Widget severitySmallCards() {
-    final studentColor = severityColor(report.userSeverity);
-    final aiColor = severityColor(report.aiSeverity);
-
     return Row(
       children: [
         Expanded(
           child: miniSeverityCard(
             title: AppStrings.studentSeverity,
             severity: report.userSeverity,
-            color: studentColor,
+            color: severityColor(report.userSeverity),
           ),
         ),
         const SizedBox(width: 12),
@@ -356,7 +339,7 @@ class ReportDetailsScreen extends StatelessWidget {
           child: miniSeverityCard(
             title: AppStrings.aiSeverity,
             severity: report.aiSeverity,
-            color: aiColor,
+            color: severityColor(report.aiSeverity),
           ),
         ),
       ],

@@ -109,11 +109,9 @@ class HomeScreen extends StatelessWidget {
   Widget categoryCard(BuildContext context, Map<String, dynamic> category) {
     final Color color = category['color'];
 
-    return InkWell(
-      borderRadius: BorderRadius.circular(22),
+    return _PressableCard(
       onTap: () => openReport(context, category['title']),
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 250),
+      child: Container(
         padding: const EdgeInsets.all(18),
         decoration: BoxDecoration(
           color: AppColors.surface,
@@ -248,6 +246,39 @@ class HomeScreen extends StatelessWidget {
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+class _PressableCard extends StatefulWidget {
+  final Widget child;
+  final VoidCallback onTap;
+
+  const _PressableCard({
+    required this.child,
+    required this.onTap,
+  });
+
+  @override
+  State<_PressableCard> createState() => _PressableCardState();
+}
+
+class _PressableCardState extends State<_PressableCard> {
+  bool isPressed = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTapDown: (_) => setState(() => isPressed = true),
+      onTapCancel: () => setState(() => isPressed = false),
+      onTapUp: (_) => setState(() => isPressed = false),
+      onTap: widget.onTap,
+      child: AnimatedScale(
+        scale: isPressed ? 0.97 : 1,
+        duration: const Duration(milliseconds: 120),
+        curve: Curves.easeOut,
+        child: widget.child,
       ),
     );
   }

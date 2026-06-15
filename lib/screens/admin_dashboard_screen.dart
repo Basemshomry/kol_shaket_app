@@ -2,15 +2,15 @@ import 'package:flutter/material.dart';
 
 import '../constants/app_colors.dart';
 import '../constants/app_strings.dart';
-import '../models/report_model.dart';
 import '../routes/app_routes.dart';
 import '../services/auth_service.dart';
 import '../services/language_service.dart';
 import '../services/realtime_database_service.dart';
+import '../utils/app_page_route.dart';
 import '../widgets/custom_button.dart';
 import 'excel_import_screen.dart';
 import 'notifications_screen.dart';
-import '../utils/app_page_route.dart';
+import 'statistics_screen.dart';
 
 class AdminDashboardScreen extends StatefulWidget {
   const AdminDashboardScreen({super.key});
@@ -23,7 +23,6 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
   final AuthService _authService = AuthService();
   final RealtimeDatabaseService _databaseService = RealtimeDatabaseService();
 
-  late final Stream<List<ReportModel>> reportsStream;
   late final Stream<int> unreadNotificationsStream;
 
   final TextEditingController idController = TextEditingController();
@@ -38,8 +37,6 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
   @override
   void initState() {
     super.initState();
-
-    reportsStream = _databaseService.getAllReports().asBroadcastStream();
     unreadNotificationsStream =
         _databaseService.getUnreadNotificationsCount().asBroadcastStream();
   }
@@ -106,9 +103,14 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
   void openExcelImport() {
     Navigator.push(
       context,
-      AppPageRoute(
-        page: const ExcelImportScreen(),
-      ),
+      AppPageRoute(page: const ExcelImportScreen()),
+    );
+  }
+
+  void openStatistics() {
+    Navigator.push(
+      context,
+      AppPageRoute(page: StatisticsScreen()),
     );
   }
 
@@ -193,112 +195,6 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
           ),
         ],
       ),
-    );
-  }
-
-  Widget statCard({
-    required String title,
-    required int value,
-    required IconData icon,
-    required Color color,
-  }) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: AppColors.border),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.03),
-            blurRadius: 14,
-            offset: const Offset(0, 7),
-          ),
-        ],
-      ),
-      child: Row(
-        children: [
-          Container(
-            width: 48,
-            height: 48,
-            decoration: BoxDecoration(
-              color: color.withValues(alpha: 0.12),
-              borderRadius: BorderRadius.circular(16),
-            ),
-            child: Icon(icon, color: color),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Text(
-              title,
-              style: const TextStyle(
-                color: AppColors.textSecondary,
-                fontWeight: FontWeight.w800,
-                fontSize: 13,
-              ),
-            ),
-          ),
-          Text(
-            '$value',
-            style: TextStyle(
-              color: color,
-              fontSize: 24,
-              fontWeight: FontWeight.w900,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget statsSection() {
-    return StreamBuilder<List<ReportModel>>(
-      stream: reportsStream,
-      builder: (context, snapshot) {
-        final reports = snapshot.data ?? [];
-
-        final severe = reports.where((r) {
-          final severity = r.aiAnalyzed ? r.aiSeverity : r.userSeverity;
-          return severity >= 7;
-        }).length;
-
-        final inProgress =
-            reports.where((r) => r.status == 'in_progress').length;
-
-        final resolved = reports.where((r) => r.status == 'resolved').length;
-
-        return Column(
-          children: [
-            statCard(
-              title: AppStrings.totalReports,
-              value: reports.length,
-              icon: Icons.list_alt_rounded,
-              color: AppColors.primary,
-            ),
-            const SizedBox(height: 12),
-            statCard(
-              title: AppStrings.severeReports,
-              value: severe,
-              icon: Icons.warning_amber_rounded,
-              color: AppColors.error,
-            ),
-            const SizedBox(height: 12),
-            statCard(
-              title: AppStrings.inProgress,
-              value: inProgress,
-              icon: Icons.pending_actions_rounded,
-              color: AppColors.warning,
-            ),
-            const SizedBox(height: 12),
-            statCard(
-              title: AppStrings.resolved,
-              value: resolved,
-              icon: Icons.check_circle_rounded,
-              color: AppColors.success,
-            ),
-          ],
-        );
-      },
     );
   }
 
@@ -545,9 +441,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
           onTap: () {
             Navigator.push(
               context,
-              AppPageRoute(
-                page: NotificationsScreen(),
-              ),
+              AppPageRoute(page: NotificationsScreen()),
             );
           },
         );
@@ -576,15 +470,6 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
             padding: const EdgeInsets.all(20),
             children: [
               heroCard(),
-              const SizedBox(height: 22),
-              sectionTitle(
-                AppStrings.text(
-                  he: 'סטטיסטיקות',
-                  en: 'Statistics',
-                  ar: 'إحصائيات',
-                ),
-              ),
-              statsSection(),
               const SizedBox(height: 24),
               sectionTitle(
                 AppStrings.text(
@@ -592,6 +477,16 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                   en: 'Quick Actions',
                   ar: 'إجراءات سريعة',
                 ),
+              ),
+              actionCard(
+                title: AppStrings.text(
+                  he: 'סטטיסטיקות',
+                  en: 'Statistics',
+                  ar: 'إحصائيات',
+                ),
+                icon: Icons.bar_chart_rounded,
+                color: AppColors.primary,
+                onTap: openStatistics,
               ),
               actionCard(
                 title: AppStrings.viewAllReports,
