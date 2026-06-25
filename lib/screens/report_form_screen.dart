@@ -9,6 +9,7 @@ import '../services/ai_chatbot_service.dart';
 import '../services/ai_service.dart';
 import '../services/realtime_database_service.dart';
 import 'chat_screen.dart';
+import '../utils/app_page_route.dart';
 
 class ReportFormScreen extends StatefulWidget {
   final String category;
@@ -155,8 +156,8 @@ class _ReportFormScreenState extends State<ReportFormScreen> {
       if (aiResult.aiSeverity >= 8) {
         Navigator.pushReplacement(
           context,
-          MaterialPageRoute(
-            builder: (_) => ChatScreen(
+          AppPageRoute(
+            page: ChatScreen(
               report: report,
               chatType: 'counselor',
               chatTitle: AppStrings.chatWithAiAssistant,

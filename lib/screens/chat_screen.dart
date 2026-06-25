@@ -1,6 +1,7 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
+import '../constants/app_colors.dart';
 import '../constants/app_strings.dart';
 import '../models/chat_message_model.dart';
 import '../models/notification_model.dart';
@@ -28,22 +29,44 @@ class _ChatScreenState extends State<ChatScreen> {
   final RealtimeDatabaseService _databaseService = RealtimeDatabaseService();
   final AiChatbotService _aiChatbotService = AiChatbotService();
   final TextEditingController messageController = TextEditingController();
+  final ScrollController scrollController = ScrollController();
 
   bool isSending = false;
 
   @override
   void initState() {
     super.initState();
+
     _databaseService.markChatAsRead(
       reportId: widget.report.reportId,
       chatType: widget.chatType,
     );
   }
 
+  @override
+  void dispose() {
+    messageController.dispose();
+    scrollController.dispose();
+    super.dispose();
+  }
+
   String formatTime(DateTime date) {
     final hour = date.hour.toString().padLeft(2, '0');
     final minute = date.minute.toString().padLeft(2, '0');
     return '$hour:$minute';
+  }
+
+  String statusText(String status) {
+    switch (status) {
+      case 'pending':
+        return AppStrings.pending;
+      case 'in_progress':
+        return AppStrings.inProgress;
+      case 'resolved':
+        return AppStrings.resolved;
+      default:
+        return status;
+    }
   }
 
   String roleText(String role) {
@@ -63,6 +86,46 @@ class _ChatScreenState extends State<ChatScreen> {
     }
   }
 
+  IconData roleIcon(String role) {
+    switch (role) {
+      case 'student':
+        return Icons.person_rounded;
+      case 'counselor':
+        return Icons.support_agent_rounded;
+      case 'manager':
+        return Icons.admin_panel_settings_rounded;
+      case 'teacher':
+        return Icons.school_rounded;
+      case 'ai_bot':
+        return Icons.smart_toy_rounded;
+      default:
+        return Icons.groups_rounded;
+    }
+  }
+
+  Color severityColor(int severity) {
+    if (severity >= 8) return AppColors.error;
+    if (severity >= 5) return AppColors.warning;
+    return AppColors.success;
+  }
+
+  bool isMe(ChatMessageModel message) {
+    final currentUser = FirebaseAuth.instance.currentUser;
+    return currentUser != null && message.senderId == currentUser.uid;
+  }
+
+  Future<void> scrollToBottom() async {
+    await Future.delayed(const Duration(milliseconds: 120));
+
+    if (!scrollController.hasClients) return;
+
+    scrollController.animateTo(
+      scrollController.position.maxScrollExtent,
+      duration: const Duration(milliseconds: 260),
+      curve: Curves.easeOutCubic,
+    );
+  }
+
   Future<void> sendMessage() async {
     final text = messageController.text.trim();
     if (text.isEmpty) return;
@@ -70,9 +133,7 @@ class _ChatScreenState extends State<ChatScreen> {
     final currentUser = FirebaseAuth.instance.currentUser;
     if (currentUser == null) return;
 
-    setState(() {
-      isSending = true;
-    });
+    setState(() => isSending = true);
 
     try {
       final appUser = await _databaseService.getUserByUid(currentUser.uid);
@@ -121,12 +182,9 @@ class _ChatScreenState extends State<ChatScreen> {
       );
 
       messageController.clear();
+      await scrollToBottom();
     } finally {
-      if (mounted) {
-        setState(() {
-          isSending = false;
-        });
-      }
+      if (mounted) setState(() => isSending = false);
     }
   }
 
@@ -164,15 +222,77 @@ class _ChatScreenState extends State<ChatScreen> {
     }
   }
 
-  @override
-  void dispose() {
-    messageController.dispose();
-    super.dispose();
-  }
+  Widget chatHeader() {
+    final severity = widget.report.aiAnalyzed
+        ? widget.report.aiSeverity
+        : widget.report.userSeverity;
 
-  bool isMe(ChatMessageModel message) {
-    final currentUser = FirebaseAuth.instance.currentUser;
-    return currentUser != null && message.senderId == currentUser.uid;
+    final color = severityColor(severity);
+
+    return Container(
+      margin: const EdgeInsets.fromLTRB(14, 12, 14, 4),
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(22),
+        border: Border.all(color: AppColors.border),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.025),
+            blurRadius: 12,
+            offset: const Offset(0, 6),
+          ),
+        ],
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 44,
+            height: 44,
+            decoration: BoxDecoration(
+              color: color.withValues(alpha: 0.12),
+              borderRadius: BorderRadius.circular(15),
+            ),
+            child: Icon(
+              Icons.assignment_rounded,
+              color: color,
+              size: 25,
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  widget.report.category.isEmpty
+                      ? AppStrings.reportWithoutCategory
+                      : widget.report.category,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    color: AppColors.textPrimary,
+                    fontSize: 15.5,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  '${AppStrings.status}: ${statusText(widget.report.status)} • $severity/10',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    color: AppColors.textSecondary,
+                    fontSize: 12.5,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   Widget messageStatus(ChatMessageModel message, bool mine) {
@@ -192,42 +312,276 @@ class _ChatScreenState extends State<ChatScreen> {
     );
   }
 
-  Color bubbleColor({
-    required bool mine,
-    required ChatMessageModel message,
-  }) {
-    if (message.senderRole == 'ai_bot') {
-      return Colors.green.shade100;
-    }
+  Widget messageBubble(ChatMessageModel message, int index) {
+    final mine = isMe(message);
+    final isAi = message.senderRole == 'ai_bot';
 
-    return mine ? Colors.blue : Colors.grey.shade300;
+    final bubbleColor = isAi
+        ? AppColors.primaryLight
+        : mine
+            ? AppColors.primary
+            : AppColors.surface;
+
+    final borderColor = isAi
+        ? AppColors.primaryLight
+        : mine
+            ? AppColors.primary
+            : AppColors.border;
+
+    final textColor = mine && !isAi ? Colors.white : AppColors.textPrimary;
+    final maxWidth = MediaQuery.of(context).size.width * 0.78;
+
+    return TweenAnimationBuilder<double>(
+      tween: Tween(begin: 0, end: 1),
+      duration: Duration(milliseconds: 260 + (index.clamp(0, 6) * 25)),
+      curve: Curves.easeOutCubic,
+      builder: (context, value, child) {
+        return Opacity(
+          opacity: value,
+          child: Transform.translate(
+            offset: Offset(0, 14 * (1 - value)),
+            child: child,
+          ),
+        );
+      },
+      child: Padding(
+        padding: const EdgeInsets.only(bottom: 13),
+        child: Row(
+          mainAxisAlignment:
+              mine ? MainAxisAlignment.end : MainAxisAlignment.start,
+          crossAxisAlignment: CrossAxisAlignment.end,
+          children: [
+            if (!mine) ...[
+              CircleAvatar(
+                radius: 18,
+                backgroundColor:
+                    isAi ? AppColors.primary : AppColors.primaryLight,
+                child: Icon(
+                  roleIcon(message.senderRole),
+                  size: 18,
+                  color: isAi ? Colors.white : AppColors.primary,
+                ),
+              ),
+              const SizedBox(width: 8),
+            ],
+            Flexible(
+              child: Container(
+                constraints: BoxConstraints(maxWidth: maxWidth),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 15,
+                  vertical: 12,
+                ),
+                decoration: BoxDecoration(
+                  color: bubbleColor,
+                  borderRadius: BorderRadius.only(
+                    topLeft: const Radius.circular(22),
+                    topRight: const Radius.circular(22),
+                    bottomLeft: Radius.circular(mine ? 22 : 7),
+                    bottomRight: Radius.circular(mine ? 7 : 22),
+                  ),
+                  border: Border.all(color: borderColor),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.025),
+                      blurRadius: 12,
+                      offset: const Offset(0, 6),
+                    ),
+                  ],
+                ),
+                child: Column(
+                  crossAxisAlignment:
+                      mine ? CrossAxisAlignment.end : CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          roleIcon(message.senderRole),
+                          size: 14,
+                          color:
+                              mine && !isAi ? Colors.white70 : AppColors.primary,
+                        ),
+                        const SizedBox(width: 5),
+                        Text(
+                          roleText(message.senderRole),
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w900,
+                            color: mine && !isAi
+                                ? Colors.white70
+                                : AppColors.primary,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      message.message,
+                      style: TextStyle(
+                        color: textColor,
+                        fontSize: 15.8,
+                        height: 1.42,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                    const SizedBox(height: 7),
+                    Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          formatTime(message.createdAt),
+                          style: TextStyle(
+                            color: mine && !isAi
+                                ? Colors.white70
+                                : AppColors.textSecondary,
+                            fontSize: 11.5,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        if (mine) ...[
+                          const SizedBox(width: 6),
+                          messageStatus(message, mine),
+                        ],
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
-  Color textColor({
-    required bool mine,
-    required ChatMessageModel message,
-  }) {
-    if (message.senderRole == 'ai_bot') {
-      return Colors.black;
-    }
+  Widget emptyState() {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(30),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 86,
+              height: 86,
+              decoration: BoxDecoration(
+                color: AppColors.primaryLight,
+                borderRadius: BorderRadius.circular(28),
+              ),
+              child: const Icon(
+                Icons.chat_bubble_outline_rounded,
+                size: 42,
+                color: AppColors.primary,
+              ),
+            ),
+            const SizedBox(height: 18),
+            Text(
+              AppStrings.noMessagesYet,
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                color: AppColors.textPrimary,
+                fontSize: 20,
+                fontWeight: FontWeight.w900,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              AppStrings.text(
+                he: 'שלח הודעה כדי להתחיל את השיחה',
+                en: 'Send a message to start the conversation',
+                ar: 'أرسل رسالة لبدء المحادثة',
+              ),
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                color: AppColors.textSecondary,
+                fontSize: 14,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 
-    return mine ? Colors.white : Colors.black;
+  Widget inputBar() {
+    return SafeArea(
+      top: false,
+      child: Container(
+        padding: const EdgeInsets.fromLTRB(12, 10, 12, 12),
+        decoration: const BoxDecoration(
+          color: AppColors.surface,
+          border: Border(
+            top: BorderSide(color: AppColors.border),
+          ),
+        ),
+        child: Row(
+          children: [
+            Expanded(
+              child: TextField(
+                controller: messageController,
+                minLines: 1,
+                maxLines: 4,
+                textInputAction: TextInputAction.newline,
+                decoration: InputDecoration(
+                  hintText: AppStrings.writeMessage,
+                  filled: true,
+                  fillColor: AppColors.background,
+                  contentPadding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 13,
+                  ),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(24),
+                    borderSide: const BorderSide(color: AppColors.border),
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(width: 8),
+            AnimatedScale(
+              scale: isSending ? 0.92 : 1,
+              duration: const Duration(milliseconds: 140),
+              child: SizedBox(
+                width: 48,
+                height: 48,
+                child: isSending
+                    ? const Padding(
+                        padding: EdgeInsets.all(12),
+                        child: CircularProgressIndicator(strokeWidth: 2.4),
+                      )
+                    : ElevatedButton(
+                        onPressed: sendMessage,
+                        style: ElevatedButton.styleFrom(
+                          padding: EdgeInsets.zero,
+                          shape: const CircleBorder(),
+                          minimumSize: const Size(48, 48),
+                        ),
+                        child: const Icon(Icons.send_rounded, size: 21),
+                      ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: AppColors.background,
       appBar: AppBar(
         title: Text(widget.chatTitle),
         actions: [
           IconButton(
-            icon: const Icon(Icons.delete),
+            icon: const Icon(Icons.delete_outline),
             onPressed: confirmClearChat,
           ),
         ],
       ),
       body: Column(
         children: [
+          chatHeader(),
           Expanded(
             child: StreamBuilder<List<ChatMessageModel>>(
               stream: _databaseService.getChatMessages(
@@ -238,104 +592,25 @@ class _ChatScreenState extends State<ChatScreen> {
                 final messages = snapshot.data ?? [];
 
                 if (messages.isEmpty) {
-                  return Center(
-                    child: Text(AppStrings.noMessagesYet),
-                  );
+                  return emptyState();
                 }
 
+                WidgetsBinding.instance.addPostFrameCallback((_) {
+                  scrollToBottom();
+                });
+
                 return ListView.builder(
-                  padding: const EdgeInsets.all(16),
+                  controller: scrollController,
+                  padding: const EdgeInsets.fromLTRB(16, 14, 16, 8),
                   itemCount: messages.length,
                   itemBuilder: (context, index) {
-                    final message = messages[index];
-                    final mine = isMe(message);
-
-                    return Align(
-                      alignment:
-                          mine ? Alignment.centerRight : Alignment.centerLeft,
-                      child: Container(
-                        margin: const EdgeInsets.only(bottom: 10),
-                        padding: const EdgeInsets.all(12),
-                        constraints: const BoxConstraints(maxWidth: 280),
-                        decoration: BoxDecoration(
-                          color: bubbleColor(mine: mine, message: message),
-                          borderRadius: BorderRadius.circular(16),
-                        ),
-                        child: Column(
-                          crossAxisAlignment: mine
-                              ? CrossAxisAlignment.end
-                              : CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              roleText(message.senderRole),
-                              style: TextStyle(
-                                fontWeight: FontWeight.bold,
-                                color: textColor(mine: mine, message: message),
-                              ),
-                            ),
-                            const SizedBox(height: 6),
-                            Text(
-                              message.message,
-                              style: TextStyle(
-                                color: textColor(mine: mine, message: message),
-                                fontSize: 16,
-                              ),
-                            ),
-                            const SizedBox(height: 6),
-                            Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Text(
-                                  formatTime(message.createdAt),
-                                  style: TextStyle(
-                                    color: message.senderRole == 'ai_bot'
-                                        ? Colors.black54
-                                        : mine
-                                            ? Colors.white70
-                                            : Colors.black54,
-                                    fontSize: 12,
-                                  ),
-                                ),
-                                if (mine) ...[
-                                  const SizedBox(width: 6),
-                                  messageStatus(message, mine),
-                                ],
-                              ],
-                            ),
-                          ],
-                        ),
-                      ),
-                    );
+                    return messageBubble(messages[index], index);
                   },
                 );
               },
             ),
           ),
-          Padding(
-            padding: const EdgeInsets.all(12),
-            child: Row(
-              children: [
-                Expanded(
-                  child: TextField(
-                    controller: messageController,
-                    decoration: InputDecoration(
-                      hintText: AppStrings.writeMessage,
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(16),
-                      ),
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 8),
-                isSending
-                    ? const CircularProgressIndicator()
-                    : IconButton(
-                        icon: const Icon(Icons.send),
-                        onPressed: sendMessage,
-                      ),
-              ],
-            ),
-          ),
+          inputBar(),
         ],
       ),
     );

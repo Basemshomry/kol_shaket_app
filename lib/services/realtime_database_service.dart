@@ -9,6 +9,73 @@ import '../models/report_model.dart';
 class RealtimeDatabaseService {
   final FirebaseDatabase _database = FirebaseDatabase.instance;
 
+  Future<void> saveFcmToken({
+    required String uid,
+    required String token,
+  }) async {
+    await _database.ref('users/$uid/fcmTokens/$token').set(true);
+  }
+
+  Future<List<String>> getStaffFcmTokens() async {
+    final snapshot = await _database.ref('users').get();
+    if (!snapshot.exists || snapshot.value == null) return [];
+
+    final data = snapshot.value as Map<dynamic, dynamic>;
+    final tokens = <String>[];
+
+    for (final item in data.values) {
+      final user = Map<String, dynamic>.from(item as Map);
+      final role = (user['role'] ?? '').toString();
+
+      if (role == 'student') continue;
+
+      final userTokens = user['fcmTokens'];
+      if (userTokens is Map) {
+        tokens.addAll(userTokens.keys.map((key) => key.toString()));
+      }
+    }
+
+    return tokens;
+  }
+
+  Future<List<String>> getUserFcmTokens(String uid) async {
+    final snapshot = await _database.ref('users/$uid/fcmTokens').get();
+    if (!snapshot.exists || snapshot.value == null) return [];
+
+    final data = snapshot.value as Map<dynamic, dynamic>;
+    return data.keys.map((key) => key.toString()).toList();
+  }
+
+  Future<List<Map<String, dynamic>>> getApprovedStudents() async {
+    final snapshot = await _database.ref('approved_students').get();
+    if (!snapshot.exists || snapshot.value == null) return [];
+
+    final data = snapshot.value as Map<dynamic, dynamic>;
+
+    return data.values.map((item) {
+      return Map<String, dynamic>.from(item as Map);
+    }).toList();
+  }
+
+  Future<List<Map<String, dynamic>>> getApprovedAdmins() async {
+    final snapshot = await _database.ref('approved_admins').get();
+    if (!snapshot.exists || snapshot.value == null) return [];
+
+    final data = snapshot.value as Map<dynamic, dynamic>;
+
+    return data.values.map((item) {
+      return Map<String, dynamic>.from(item as Map);
+    }).toList();
+  }
+
+  Future<void> deleteApprovedStudent(String idNumber) async {
+    await _database.ref('approved_students/$idNumber').remove();
+  }
+
+  Future<void> deleteApprovedAdmin(String idNumber) async {
+    await _database.ref('approved_admins/$idNumber').remove();
+  }
+
   Future<void> addApprovedStudent({
     required String idNumber,
     required String firstName,
@@ -99,7 +166,7 @@ class RealtimeDatabaseService {
   }
 
   Future<void> createUser(AppUser user) async {
-    await _database.ref('users/${user.uid}').set(user.toMap());
+    await _database.ref('users/${user.uid}').update(user.toMap());
   }
 
   Future<AppUser?> getUserByUid(String uid) async {

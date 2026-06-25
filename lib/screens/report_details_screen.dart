@@ -1,10 +1,13 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
+import '../constants/app_colors.dart';
 import '../constants/app_strings.dart';
 import '../models/app_user.dart';
 import '../models/report_model.dart';
 import '../services/realtime_database_service.dart';
+import '../utils/app_page_route.dart';
+import '../widgets/severity_progress_bar.dart';
 import 'chat_screen.dart';
 
 class ReportDetailsScreen extends StatelessWidget {
@@ -26,6 +29,19 @@ class ReportDetailsScreen extends StatelessWidget {
         return AppStrings.resolved;
       default:
         return status;
+    }
+  }
+
+  Color statusColor(String status) {
+    switch (status) {
+      case 'pending':
+        return AppColors.warning;
+      case 'in_progress':
+        return AppColors.primary;
+      case 'resolved':
+        return AppColors.success;
+      default:
+        return AppColors.grey;
     }
   }
 
@@ -57,9 +73,9 @@ class ReportDetailsScreen extends StatelessWidget {
   }
 
   Color severityColor(int severity) {
-    if (severity >= 8) return Colors.red;
-    if (severity >= 5) return Colors.orange;
-    return Colors.green;
+    if (severity >= 8) return AppColors.error;
+    if (severity >= 5) return AppColors.warning;
+    return AppColors.success;
   }
 
   Future<void> updateStatus(BuildContext context, String status) async {
@@ -75,83 +91,343 @@ class ReportDetailsScreen extends StatelessWidget {
     );
   }
 
-  Widget infoCard(String title, String value) {
-    return Card(
-      margin: const EdgeInsets.only(bottom: 10),
-      child: ListTile(
-        title: Text(title),
-        subtitle: Text(
-          value.isEmpty ? '-' : value,
-          style: const TextStyle(fontSize: 16),
+  Widget heroCard() {
+    final severity = report.aiAnalyzed ? report.aiSeverity : report.userSeverity;
+    final color = severityColor(severity);
+
+    return Container(
+      padding: const EdgeInsets.all(22),
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          colors: [
+            AppColors.primary,
+            AppColors.primaryDark,
+          ],
         ),
+        borderRadius: BorderRadius.circular(28),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Icon(
+            Icons.assignment_rounded,
+            color: Colors.white,
+            size: 42,
+          ),
+          const SizedBox(height: 18),
+          Text(
+            report.category.isEmpty
+                ? AppStrings.reportWithoutCategory
+                : report.category,
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 26,
+              fontWeight: FontWeight.w900,
+            ),
+          ),
+          const SizedBox(height: 10),
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 8,
+                ),
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: 0.16),
+                  borderRadius: BorderRadius.circular(999),
+                ),
+                child: Text(
+                  statusText(report.status),
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 8,
+                ),
+                decoration: BoxDecoration(
+                  color: color.withValues(alpha: 0.95),
+                  borderRadius: BorderRadius.circular(999),
+                ),
+                child: Text(
+                  '$severity/10',
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ],
       ),
     );
   }
 
-  Widget severityCard({
-    required String title,
-    required int severity,
-  }) {
-    return Card(
-      margin: const EdgeInsets.only(bottom: 10),
-      child: ListTile(
-        title: Text(title),
-        subtitle: Text(
-          '$severity / 10',
-          style: TextStyle(
-            fontSize: 20,
-            fontWeight: FontWeight.bold,
-            color: severityColor(severity),
+  Widget sectionTitle(String title, IconData icon) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12, top: 6),
+      child: Row(
+        children: [
+          Icon(icon, color: AppColors.primary),
+          const SizedBox(width: 8),
+          Text(
+            title,
+            style: const TextStyle(
+              color: AppColors.textPrimary,
+              fontSize: 20,
+              fontWeight: FontWeight.w900,
+            ),
           ),
-        ),
+        ],
       ),
     );
   }
 
   Widget aiCard() {
-    return Card(
-      margin: const EdgeInsets.only(bottom: 14),
-      color: report.aiSeverity >= 8
-          ? Colors.red.shade50
-          : report.aiSeverity >= 5
-              ? Colors.orange.shade50
-              : Colors.green.shade50,
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Text(
-              AppStrings.aiAnalysis,
-              style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+    final color = severityColor(report.aiSeverity);
+
+    return Container(
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: color.withValues(alpha: 0.25)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 52,
+                height: 52,
+                decoration: BoxDecoration(
+                  color: color.withValues(alpha: 0.14),
+                  borderRadius: BorderRadius.circular(18),
+                ),
+                child: Icon(
+                  Icons.smart_toy_rounded,
+                  color: color,
+                  size: 30,
+                ),
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Text(
+                  AppStrings.aiAnalysis,
+                  style: const TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.w900,
+                    color: AppColors.textPrimary,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          SeverityProgressBar(
+            severity: report.aiSeverity,
+            title: AppStrings.aiSeverity,
+          ),
+          const SizedBox(height: 16),
+          detailLine(
+            icon: Icons.check_circle_outline_rounded,
+            title: AppStrings.analyzed,
+            value: report.aiAnalyzed ? AppStrings.yes : AppStrings.no,
+          ),
+          detailLine(
+            icon: Icons.warning_amber_rounded,
+            title: AppStrings.aiRiskLevel,
+            value: report.aiRiskLevel.isEmpty ? '-' : report.aiRiskLevel,
+            valueColor: color,
+          ),
+          const SizedBox(height: 12),
+          textBlock(AppStrings.summary, report.aiSummary),
+          const SizedBox(height: 12),
+          textBlock(AppStrings.recommendation, report.aiRecommendation),
+        ],
+      ),
+    );
+  }
+
+  Widget textBlock(String title, String value) {
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: AppColors.border),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            title,
+            style: const TextStyle(
+              color: AppColors.textSecondary,
+              fontWeight: FontWeight.w800,
+              fontSize: 13,
             ),
-            const SizedBox(height: 12),
-            Text('${AppStrings.analyzed}: ${report.aiAnalyzed ? AppStrings.yes : AppStrings.no}'),
-            const SizedBox(height: 8),
-            Text(
-              '${AppStrings.aiSeverity}: ${report.aiSeverity} / 10',
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-                color: severityColor(report.aiSeverity),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            value.isEmpty ? '-' : value,
+            style: const TextStyle(
+              color: AppColors.textPrimary,
+              fontWeight: FontWeight.w600,
+              fontSize: 14.5,
+              height: 1.35,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget detailLine({
+    required IconData icon,
+    required String title,
+    required String value,
+    Color? valueColor,
+  }) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: Row(
+        children: [
+          Icon(icon, color: AppColors.textSecondary, size: 20),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              title,
+              style: const TextStyle(
+                color: AppColors.textSecondary,
+                fontWeight: FontWeight.w700,
               ),
             ),
-            const SizedBox(height: 8),
-            Text('${AppStrings.aiRiskLevel}: ${report.aiRiskLevel.isEmpty ? '-' : report.aiRiskLevel}'),
-            const SizedBox(height: 12),
-            Text(
-              '${AppStrings.summary}:',
-              style: const TextStyle(fontWeight: FontWeight.bold),
+          ),
+          Text(
+            value.isEmpty ? '-' : value,
+            style: TextStyle(
+              color: valueColor ?? AppColors.textPrimary,
+              fontWeight: FontWeight.w900,
             ),
-            Text(report.aiSummary.isEmpty ? '-' : report.aiSummary),
-            const SizedBox(height: 12),
-            Text(
-              '${AppStrings.recommendation}:',
-              style: const TextStyle(fontWeight: FontWeight.bold),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget infoCard({
+    required IconData icon,
+    required String title,
+    required String value,
+  }) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.all(15),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(22),
+        border: Border.all(color: AppColors.border),
+      ),
+      child: Row(
+        children: [
+          CircleAvatar(
+            backgroundColor: AppColors.primaryLight,
+            child: Icon(icon, color: AppColors.primary),
+          ),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: const TextStyle(
+                    color: AppColors.textSecondary,
+                    fontWeight: FontWeight.w700,
+                    fontSize: 13,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  value.isEmpty ? '-' : value,
+                  style: const TextStyle(
+                    color: AppColors.textPrimary,
+                    fontWeight: FontWeight.w800,
+                    fontSize: 15.5,
+                  ),
+                ),
+              ],
             ),
-            Text(report.aiRecommendation.isEmpty ? '-' : report.aiRecommendation),
-          ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget severitySmallCards() {
+    return Row(
+      children: [
+        Expanded(
+          child: miniSeverityCard(
+            title: AppStrings.studentSeverity,
+            severity: report.userSeverity,
+            color: severityColor(report.userSeverity),
+          ),
         ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: miniSeverityCard(
+            title: AppStrings.aiSeverity,
+            severity: report.aiSeverity,
+            color: severityColor(report.aiSeverity),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget miniSeverityCard({
+    required String title,
+    required int severity,
+    required Color color,
+  }) {
+    return Container(
+      padding: const EdgeInsets.all(15),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(22),
+        border: Border.all(color: color.withValues(alpha: 0.24)),
+      ),
+      child: Column(
+        children: [
+          Text(
+            '$severity/10',
+            style: TextStyle(
+              color: color,
+              fontSize: 22,
+              fontWeight: FontWeight.w900,
+            ),
+          ),
+          const SizedBox(height: 5),
+          Text(
+            title,
+            textAlign: TextAlign.center,
+            style: const TextStyle(
+              color: AppColors.textSecondary,
+              fontSize: 12.5,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -159,18 +435,169 @@ class ReportDetailsScreen extends StatelessWidget {
   Widget locationCard() {
     final hasLocation = report.latitude != null && report.longitude != null;
 
-    return Card(
-      margin: const EdgeInsets.only(bottom: 14),
-      child: ListTile(
-        leading: const Icon(Icons.location_on),
-        title: Text(AppStrings.location),
-        subtitle: Text(
-          hasLocation
-              ? 'Latitude: ${report.latitude}\nLongitude: ${report.longitude}'
-              : AppStrings.noLocationSaved,
-        ),
-        isThreeLine: hasLocation,
+    return infoCard(
+      icon: Icons.location_on_outlined,
+      title: AppStrings.location,
+      value: hasLocation
+          ? 'Latitude: ${report.latitude}\nLongitude: ${report.longitude}'
+          : AppStrings.noLocationSaved,
+    );
+  }
+
+  Widget statusTimeline() {
+    final currentIndex = report.status == 'resolved'
+        ? 2
+        : report.status == 'in_progress'
+            ? 1
+            : 0;
+
+    final items = [
+      {
+        'title': AppStrings.pending,
+        'icon': Icons.hourglass_top_rounded,
+      },
+      {
+        'title': AppStrings.inProgress,
+        'icon': Icons.pending_actions_rounded,
+      },
+      {
+        'title': AppStrings.resolved,
+        'icon': Icons.check_circle_rounded,
+      },
+    ];
+
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: AppColors.border),
       ),
+      child: Row(
+        children: List.generate(items.length, (index) {
+          final active = index <= currentIndex;
+          final color = active ? AppColors.primary : AppColors.grey;
+
+          return Expanded(
+            child: Column(
+              children: [
+                CircleAvatar(
+                  backgroundColor: active
+                      ? AppColors.primaryLight
+                      : AppColors.border,
+                  child: Icon(
+                    items[index]['icon'] as IconData,
+                    color: color,
+                    size: 22,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  items[index]['title'] as String,
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    color: color,
+                    fontWeight: FontWeight.w800,
+                    fontSize: 12,
+                  ),
+                ),
+              ],
+            ),
+          );
+        }),
+      ),
+    );
+  }
+
+  Widget statusActions(BuildContext context) {
+    return Row(
+      children: [
+        Expanded(
+          child: ElevatedButton.icon(
+            onPressed: () => updateStatus(context, 'in_progress'),
+            icon: const Icon(Icons.pending_actions_rounded),
+            label: Text(AppStrings.markInProgress),
+          ),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: ElevatedButton.icon(
+            onPressed: () => updateStatus(context, 'resolved'),
+            icon: const Icon(Icons.check_circle_rounded),
+            label: Text(AppStrings.markResolved),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget chatButton(
+    BuildContext context,
+    String chatType,
+    String studentName,
+  ) {
+    return ElevatedButton.icon(
+      icon: const Icon(Icons.chat_bubble_rounded),
+      label: Text('${AppStrings.openChat} ${roleLabel(chatType)}'),
+      onPressed: () {
+        Navigator.push(
+          context,
+          AppPageRoute(
+            page: ChatScreen(
+              report: report,
+              chatType: chatType,
+              chatTitle: studentName.isEmpty
+                  ? AppStrings.chatWithStudent
+                  : '${AppStrings.openChat} $studentName',
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget studentInfo(String studentName) {
+    return Column(
+      children: [
+        infoCard(
+          icon: Icons.person_outline,
+          title: AppStrings.firstName,
+          value: studentName,
+        ),
+        infoCard(
+          icon: Icons.badge_outlined,
+          title: AppStrings.idNumber,
+          value: report.studentIdNumber,
+        ),
+        infoCard(
+          icon: Icons.school_outlined,
+          title: AppStrings.className,
+          value: report.studentClassName,
+        ),
+      ],
+    );
+  }
+
+  Widget reportInfo() {
+    return Column(
+      children: [
+        infoCard(
+          icon: Icons.category_outlined,
+          title: AppStrings.category,
+          value: report.category,
+        ),
+        infoCard(
+          icon: Icons.calendar_today_outlined,
+          title: AppStrings.date,
+          value: formatDate(report.createdAt),
+        ),
+        infoCard(
+          icon: Icons.flag_outlined,
+          title: AppStrings.status,
+          value: statusText(report.status),
+        ),
+        textBlock(AppStrings.reportDescription, report.description),
+      ],
     );
   }
 
@@ -181,6 +608,7 @@ class ReportDetailsScreen extends StatelessWidget {
         '${report.studentFirstName} ${report.studentLastName}'.trim();
 
     return Scaffold(
+      backgroundColor: AppColors.background,
       appBar: AppBar(
         title: Text(AppStrings.reportDetails),
       ),
@@ -193,59 +621,62 @@ class ReportDetailsScreen extends StatelessWidget {
           final chatType =
               appUser == null ? 'counselor' : chatTypeForUser(appUser);
 
-          return SingleChildScrollView(
+          return ListView(
             padding: const EdgeInsets.all(20),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                ElevatedButton.icon(
-                  icon: const Icon(Icons.chat),
-                  label: Text('${AppStrings.openChat} ${roleLabel(chatType)}'),
-                  onPressed: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) => ChatScreen(
-                          report: report,
-                          chatType: chatType,
-                          chatTitle: studentName.isEmpty
-                              ? AppStrings.chatWithStudent
-                              : '${AppStrings.openChat} $studentName',
-                        ),
-                      ),
-                    );
-                  },
+            children: [
+              heroCard(),
+              const SizedBox(height: 18),
+              chatButton(context, chatType, studentName),
+              const SizedBox(height: 18),
+              sectionTitle(
+                AppStrings.text(
+                  he: 'מצב טיפול',
+                  en: 'Report Progress',
+                  ar: 'تقدّم المعالجة',
                 ),
-                const SizedBox(height: 16),
-                aiCard(),
-                severityCard(
-                  title: AppStrings.studentSeverity,
-                  severity: report.userSeverity,
+                Icons.timeline_rounded,
+              ),
+              statusTimeline(),
+              const SizedBox(height: 18),
+              sectionTitle(AppStrings.aiAnalysis, Icons.smart_toy_rounded),
+              aiCard(),
+              const SizedBox(height: 14),
+              severitySmallCards(),
+              const SizedBox(height: 18),
+              sectionTitle(
+                AppStrings.text(
+                  he: 'פרטי תלמיד',
+                  en: 'Student Information',
+                  ar: 'معلومات الطالب',
                 ),
-                severityCard(
-                  title: AppStrings.aiSeverity,
-                  severity: report.aiSeverity,
+                Icons.person_rounded,
+              ),
+              studentInfo(studentName),
+              const SizedBox(height: 8),
+              sectionTitle(
+                AppStrings.text(
+                  he: 'פרטי הפנייה',
+                  en: 'Report Information',
+                  ar: 'معلومات التوجه',
                 ),
-                locationCard(),
-                infoCard(AppStrings.category, report.category),
-                infoCard(AppStrings.firstName, studentName),
-                infoCard(AppStrings.idNumber, report.studentIdNumber),
-                infoCard(AppStrings.className, report.studentClassName),
-                infoCard(AppStrings.date, formatDate(report.createdAt)),
-                infoCard(AppStrings.status, statusText(report.status)),
-                infoCard(AppStrings.reportDescription, report.description),
-                const SizedBox(height: 12),
-                ElevatedButton(
-                  onPressed: () => updateStatus(context, 'in_progress'),
-                  child: Text(AppStrings.markInProgress),
+                Icons.assignment_rounded,
+              ),
+              reportInfo(),
+              const SizedBox(height: 8),
+              sectionTitle(AppStrings.location, Icons.location_on_rounded),
+              locationCard(),
+              const SizedBox(height: 18),
+              sectionTitle(
+                AppStrings.text(
+                  he: 'עדכון סטטוס',
+                  en: 'Update Status',
+                  ar: 'تحديث الحالة',
                 ),
-                const SizedBox(height: 12),
-                ElevatedButton(
-                  onPressed: () => updateStatus(context, 'resolved'),
-                  child: Text(AppStrings.markResolved),
-                ),
-              ],
-            ),
+                Icons.edit_note_rounded,
+              ),
+              statusActions(context),
+              const SizedBox(height: 20),
+            ],
           );
         },
       ),
