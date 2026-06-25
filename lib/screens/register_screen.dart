@@ -6,6 +6,7 @@ import '../models/app_user.dart';
 import '../routes/app_routes.dart';
 import '../services/auth_service.dart';
 import '../services/language_service.dart';
+import '../services/notification_service.dart';
 import '../services/realtime_database_service.dart';
 import '../widgets/custom_button.dart';
 
@@ -32,6 +33,11 @@ class _RegisterScreenState extends State<RegisterScreen> {
       });
 
       final idNumber = idNumberController.text.trim();
+      final password = passwordController.text.trim();
+
+      if (idNumber.isEmpty || password.isEmpty) {
+        throw Exception(AppStrings.registerError);
+      }
 
       final approvedStudent =
           await _databaseService.getApprovedStudent(idNumber);
@@ -52,7 +58,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
 
       final credential = await _authService.register(
         email: generatedEmail,
-        password: passwordController.text.trim(),
+        password: password,
       );
 
       final user = AppUser(
@@ -66,6 +72,8 @@ class _RegisterScreenState extends State<RegisterScreen> {
       );
 
       await _databaseService.createUser(user);
+
+      NotificationService.instance.saveCurrentUserToken();
 
       if (!mounted) return;
 
@@ -92,7 +100,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
       if (!mounted) return;
 
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(e.toString())),
+        SnackBar(
+          content: Text(e.toString().replaceAll('Exception: ', '')),
+        ),
       );
     } finally {
       if (mounted) {

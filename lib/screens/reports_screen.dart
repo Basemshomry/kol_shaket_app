@@ -4,13 +4,28 @@ import '../constants/app_colors.dart';
 import '../constants/app_strings.dart';
 import '../models/report_model.dart';
 import '../services/realtime_database_service.dart';
-import 'chat_screen.dart';
 import '../utils/app_page_route.dart';
+import 'chat_screen.dart';
 
-class ReportsScreen extends StatelessWidget {
-  ReportsScreen({super.key});
+class ReportsScreen extends StatefulWidget {
+  const ReportsScreen({super.key});
 
+  @override
+  State<ReportsScreen> createState() => _ReportsScreenState();
+}
+
+class _ReportsScreenState extends State<ReportsScreen> {
   final RealtimeDatabaseService _databaseService = RealtimeDatabaseService();
+
+  Key refreshKey = UniqueKey();
+
+  Future<void> refreshReports() async {
+    setState(() {
+      refreshKey = UniqueKey();
+    });
+
+    await Future.delayed(const Duration(milliseconds: 500));
+  }
 
   Color getStatusColor(String status) {
     switch (status) {
@@ -117,10 +132,12 @@ class ReportsScreen extends StatelessWidget {
   }
 
   Widget emptyState() {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(30),
-        child: Column(
+    return ListView(
+      physics: const AlwaysScrollableScrollPhysics(),
+      padding: const EdgeInsets.all(30),
+      children: [
+        SizedBox(height: MediaQuery.of(context).size.height * 0.18),
+        Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             Container(
@@ -161,7 +178,7 @@ class ReportsScreen extends StatelessWidget {
             ),
           ],
         ),
-      ),
+      ],
     );
   }
 
@@ -251,9 +268,7 @@ class ReportsScreen extends StatelessWidget {
                       ),
                       const SizedBox(height: 5),
                       Text(
-                        report.description.isEmpty
-                            ? '-'
-                            : report.description,
+                        report.description.isEmpty ? '-' : report.description,
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
                         style: const TextStyle(
@@ -378,6 +393,26 @@ class ReportsScreen extends StatelessWidget {
     );
   }
 
+  Widget reportsList(List<ReportModel> reports) {
+    return ListView.builder(
+      physics: const AlwaysScrollableScrollPhysics(),
+      padding: const EdgeInsets.only(bottom: 18),
+      itemCount: reports.length + 1,
+      itemBuilder: (context, index) {
+        if (index == 0) {
+          return headerCard(reports.length);
+        }
+
+        final report = reports[index - 1];
+
+        return Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          child: reportCard(context, report),
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -385,36 +420,31 @@ class ReportsScreen extends StatelessWidget {
       appBar: AppBar(
         title: Text(AppStrings.myReports),
       ),
-      body: StreamBuilder<List<ReportModel>>(
-        stream: _databaseService.getMyReports(),
-        builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(child: CircularProgressIndicator());
-          }
-
-          final reports = snapshot.data ?? [];
-
-          if (reports.isEmpty) {
-            return emptyState();
-          }
-
-          return ListView.builder(
-            padding: const EdgeInsets.only(bottom: 18),
-            itemCount: reports.length + 1,
-            itemBuilder: (context, index) {
-              if (index == 0) {
-                return headerCard(reports.length);
-              }
-
-              final report = reports[index - 1];
-
-              return Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                child: reportCard(context, report),
+      body: RefreshIndicator(
+        onRefresh: refreshReports,
+        child: StreamBuilder<List<ReportModel>>(
+          key: refreshKey,
+          stream: _databaseService.getMyReports(),
+          builder: (context, snapshot) {
+            if (snapshot.connectionState == ConnectionState.waiting) {
+              return ListView(
+                physics: const AlwaysScrollableScrollPhysics(),
+                children: const [
+                  SizedBox(height: 250),
+                  Center(child: CircularProgressIndicator()),
+                ],
               );
-            },
-          );
-        },
+            }
+
+            final reports = snapshot.data ?? [];
+
+            if (reports.isEmpty) {
+              return emptyState();
+            }
+
+            return reportsList(reports);
+          },
+        ),
       ),
     );
   }

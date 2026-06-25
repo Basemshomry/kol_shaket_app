@@ -32,6 +32,19 @@ class ReportDetailsScreen extends StatelessWidget {
     }
   }
 
+  Color statusColor(String status) {
+    switch (status) {
+      case 'pending':
+        return AppColors.warning;
+      case 'in_progress':
+        return AppColors.primary;
+      case 'resolved':
+        return AppColors.success;
+      default:
+        return AppColors.grey;
+    }
+  }
+
   String formatDate(DateTime date) {
     return '${date.day.toString().padLeft(2, '0')}/'
         '${date.month.toString().padLeft(2, '0')}/'
@@ -80,6 +93,7 @@ class ReportDetailsScreen extends StatelessWidget {
 
   Widget heroCard() {
     final severity = report.aiAnalyzed ? report.aiSeverity : report.userSeverity;
+    final color = severityColor(severity);
 
     return Container(
       padding: const EdgeInsets.all(22),
@@ -90,7 +104,7 @@ class ReportDetailsScreen extends StatelessWidget {
             AppColors.primaryDark,
           ],
         ),
-        borderRadius: BorderRadius.circular(26),
+        borderRadius: BorderRadius.circular(28),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -111,29 +125,64 @@ class ReportDetailsScreen extends StatelessWidget {
               fontWeight: FontWeight.w900,
             ),
           ),
-          const SizedBox(height: 8),
-          Text(
-            '${AppStrings.status}: ${statusText(report.status)}',
-            style: TextStyle(
-              color: Colors.white.withValues(alpha: 0.88),
-              fontSize: 15,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-          const SizedBox(height: 16),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
-            decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.16),
-              borderRadius: BorderRadius.circular(999),
-            ),
-            child: Text(
-              '$severity/10 • ${AppStrings.aiSeverity}',
-              style: const TextStyle(
-                color: Colors.white,
-                fontSize: 15,
-                fontWeight: FontWeight.w900,
+          const SizedBox(height: 10),
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 8,
+                ),
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: 0.16),
+                  borderRadius: BorderRadius.circular(999),
+                ),
+                child: Text(
+                  statusText(report.status),
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
               ),
+              const SizedBox(width: 8),
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 8,
+                ),
+                decoration: BoxDecoration(
+                  color: color.withValues(alpha: 0.95),
+                  borderRadius: BorderRadius.circular(999),
+                ),
+                child: Text(
+                  '$severity/10',
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget sectionTitle(String title, IconData icon) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12, top: 6),
+      child: Row(
+        children: [
+          Icon(icon, color: AppColors.primary),
+          const SizedBox(width: 8),
+          Text(
+            title,
+            style: const TextStyle(
+              color: AppColors.textPrimary,
+              fontSize: 20,
+              fontWeight: FontWeight.w900,
             ),
           ),
         ],
@@ -395,6 +444,71 @@ class ReportDetailsScreen extends StatelessWidget {
     );
   }
 
+  Widget statusTimeline() {
+    final currentIndex = report.status == 'resolved'
+        ? 2
+        : report.status == 'in_progress'
+            ? 1
+            : 0;
+
+    final items = [
+      {
+        'title': AppStrings.pending,
+        'icon': Icons.hourglass_top_rounded,
+      },
+      {
+        'title': AppStrings.inProgress,
+        'icon': Icons.pending_actions_rounded,
+      },
+      {
+        'title': AppStrings.resolved,
+        'icon': Icons.check_circle_rounded,
+      },
+    ];
+
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: AppColors.border),
+      ),
+      child: Row(
+        children: List.generate(items.length, (index) {
+          final active = index <= currentIndex;
+          final color = active ? AppColors.primary : AppColors.grey;
+
+          return Expanded(
+            child: Column(
+              children: [
+                CircleAvatar(
+                  backgroundColor: active
+                      ? AppColors.primaryLight
+                      : AppColors.border,
+                  child: Icon(
+                    items[index]['icon'] as IconData,
+                    color: color,
+                    size: 22,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  items[index]['title'] as String,
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    color: color,
+                    fontWeight: FontWeight.w800,
+                    fontSize: 12,
+                  ),
+                ),
+              ],
+            ),
+          );
+        }),
+      ),
+    );
+  }
+
   Widget statusActions(BuildContext context) {
     return Row(
       children: [
@@ -442,6 +556,51 @@ class ReportDetailsScreen extends StatelessWidget {
     );
   }
 
+  Widget studentInfo(String studentName) {
+    return Column(
+      children: [
+        infoCard(
+          icon: Icons.person_outline,
+          title: AppStrings.firstName,
+          value: studentName,
+        ),
+        infoCard(
+          icon: Icons.badge_outlined,
+          title: AppStrings.idNumber,
+          value: report.studentIdNumber,
+        ),
+        infoCard(
+          icon: Icons.school_outlined,
+          title: AppStrings.className,
+          value: report.studentClassName,
+        ),
+      ],
+    );
+  }
+
+  Widget reportInfo() {
+    return Column(
+      children: [
+        infoCard(
+          icon: Icons.category_outlined,
+          title: AppStrings.category,
+          value: report.category,
+        ),
+        infoCard(
+          icon: Icons.calendar_today_outlined,
+          title: AppStrings.date,
+          value: formatDate(report.createdAt),
+        ),
+        infoCard(
+          icon: Icons.flag_outlined,
+          title: AppStrings.status,
+          value: statusText(report.status),
+        ),
+        textBlock(AppStrings.reportDescription, report.description),
+      ],
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final currentUser = FirebaseAuth.instance.currentUser;
@@ -469,43 +628,52 @@ class ReportDetailsScreen extends StatelessWidget {
               const SizedBox(height: 18),
               chatButton(context, chatType, studentName),
               const SizedBox(height: 18),
+              sectionTitle(
+                AppStrings.text(
+                  he: 'מצב טיפול',
+                  en: 'Report Progress',
+                  ar: 'تقدّم المعالجة',
+                ),
+                Icons.timeline_rounded,
+              ),
+              statusTimeline(),
+              const SizedBox(height: 18),
+              sectionTitle(AppStrings.aiAnalysis, Icons.smart_toy_rounded),
               aiCard(),
               const SizedBox(height: 14),
               severitySmallCards(),
-              const SizedBox(height: 14),
-              locationCard(),
-              infoCard(
-                icon: Icons.category_outlined,
-                title: AppStrings.category,
-                value: report.category,
-              ),
-              infoCard(
-                icon: Icons.person_outline,
-                title: AppStrings.firstName,
-                value: studentName,
-              ),
-              infoCard(
-                icon: Icons.badge_outlined,
-                title: AppStrings.idNumber,
-                value: report.studentIdNumber,
-              ),
-              infoCard(
-                icon: Icons.school_outlined,
-                title: AppStrings.className,
-                value: report.studentClassName,
-              ),
-              infoCard(
-                icon: Icons.calendar_today_outlined,
-                title: AppStrings.date,
-                value: formatDate(report.createdAt),
-              ),
-              infoCard(
-                icon: Icons.flag_outlined,
-                title: AppStrings.status,
-                value: statusText(report.status),
-              ),
-              textBlock(AppStrings.reportDescription, report.description),
               const SizedBox(height: 18),
+              sectionTitle(
+                AppStrings.text(
+                  he: 'פרטי תלמיד',
+                  en: 'Student Information',
+                  ar: 'معلومات الطالب',
+                ),
+                Icons.person_rounded,
+              ),
+              studentInfo(studentName),
+              const SizedBox(height: 8),
+              sectionTitle(
+                AppStrings.text(
+                  he: 'פרטי הפנייה',
+                  en: 'Report Information',
+                  ar: 'معلومات التوجه',
+                ),
+                Icons.assignment_rounded,
+              ),
+              reportInfo(),
+              const SizedBox(height: 8),
+              sectionTitle(AppStrings.location, Icons.location_on_rounded),
+              locationCard(),
+              const SizedBox(height: 18),
+              sectionTitle(
+                AppStrings.text(
+                  he: 'עדכון סטטוס',
+                  en: 'Update Status',
+                  ar: 'تحديث الحالة',
+                ),
+                Icons.edit_note_rounded,
+              ),
               statusActions(context),
               const SizedBox(height: 20),
             ],

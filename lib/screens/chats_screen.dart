@@ -6,13 +6,28 @@ import '../constants/app_strings.dart';
 import '../models/app_user.dart';
 import '../models/report_model.dart';
 import '../services/realtime_database_service.dart';
-import 'report_details_screen.dart';
 import '../utils/app_page_route.dart';
+import 'report_details_screen.dart';
 
-class ChatsScreen extends StatelessWidget {
-  ChatsScreen({super.key});
+class ChatsScreen extends StatefulWidget {
+  const ChatsScreen({super.key});
 
+  @override
+  State<ChatsScreen> createState() => _ChatsScreenState();
+}
+
+class _ChatsScreenState extends State<ChatsScreen> {
   final RealtimeDatabaseService _databaseService = RealtimeDatabaseService();
+
+  Key refreshKey = UniqueKey();
+
+  Future<void> refreshChats() async {
+    setState(() {
+      refreshKey = UniqueKey();
+    });
+
+    await Future.delayed(const Duration(milliseconds: 500));
+  }
 
   void openReportDetails(
     BuildContext context,
@@ -94,10 +109,12 @@ class ChatsScreen extends StatelessWidget {
   }
 
   Widget emptyState() {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(30),
-        child: Column(
+    return ListView(
+      physics: const AlwaysScrollableScrollPhysics(),
+      padding: const EdgeInsets.all(30),
+      children: [
+        SizedBox(height: MediaQuery.of(context).size.height * 0.18),
+        Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             Container(
@@ -138,7 +155,7 @@ class ChatsScreen extends StatelessWidget {
             ),
           ],
         ),
-      ),
+      ],
     );
   }
 
@@ -358,6 +375,26 @@ class ChatsScreen extends StatelessWidget {
     );
   }
 
+  Widget chatsList(List<ReportModel> reports, AppUser appUser) {
+    return ListView.builder(
+      physics: const AlwaysScrollableScrollPhysics(),
+      padding: const EdgeInsets.only(bottom: 18),
+      itemCount: reports.length + 1,
+      itemBuilder: (context, index) {
+        if (index == 0) {
+          return headerCard(reports.length);
+        }
+
+        final report = reports[index - 1];
+
+        return Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          child: chatCard(context, report, appUser),
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final currentUser = FirebaseAuth.instance.currentUser;
@@ -367,53 +404,60 @@ class ChatsScreen extends StatelessWidget {
       appBar: AppBar(
         title: Text(AppStrings.chats),
       ),
-      body: FutureBuilder<AppUser?>(
-        future: currentUser == null
-            ? Future.value(null)
-            : _databaseService.getUserByUid(currentUser.uid),
-        builder: (context, userSnapshot) {
-          if (userSnapshot.connectionState == ConnectionState.waiting) {
-            return const Center(child: CircularProgressIndicator());
-          }
-
-          final appUser = userSnapshot.data;
-
-          if (appUser == null) {
-            return Center(child: Text(AppStrings.noUserData));
-          }
-
-          return StreamBuilder<List<ReportModel>>(
-            stream: _databaseService.getReportsForUser(appUser),
-            builder: (context, snapshot) {
-              if (snapshot.connectionState == ConnectionState.waiting) {
-                return const Center(child: CircularProgressIndicator());
-              }
-
-              final reports = snapshot.data ?? [];
-
-              if (reports.isEmpty) {
-                return emptyState();
-              }
-
-              return ListView.builder(
-                padding: const EdgeInsets.only(bottom: 18),
-                itemCount: reports.length + 1,
-                itemBuilder: (context, index) {
-                  if (index == 0) {
-                    return headerCard(reports.length);
-                  }
-
-                  final report = reports[index - 1];
-
-                  return Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 16),
-                    child: chatCard(context, report, appUser),
-                  );
-                },
+      body: RefreshIndicator(
+        onRefresh: refreshChats,
+        child: FutureBuilder<AppUser?>(
+          key: refreshKey,
+          future: currentUser == null
+              ? Future.value(null)
+              : _databaseService.getUserByUid(currentUser.uid),
+          builder: (context, userSnapshot) {
+            if (userSnapshot.connectionState == ConnectionState.waiting) {
+              return ListView(
+                physics: const AlwaysScrollableScrollPhysics(),
+                children: const [
+                  SizedBox(height: 250),
+                  Center(child: CircularProgressIndicator()),
+                ],
               );
-            },
-          );
-        },
+            }
+
+            final appUser = userSnapshot.data;
+
+            if (appUser == null) {
+              return ListView(
+                physics: const AlwaysScrollableScrollPhysics(),
+                children: [
+                  SizedBox(height: MediaQuery.of(context).size.height * 0.28),
+                  Center(child: Text(AppStrings.noUserData)),
+                ],
+              );
+            }
+
+            return StreamBuilder<List<ReportModel>>(
+              stream: _databaseService.getReportsForUser(appUser),
+              builder: (context, snapshot) {
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return ListView(
+                    physics: const AlwaysScrollableScrollPhysics(),
+                    children: const [
+                      SizedBox(height: 250),
+                      Center(child: CircularProgressIndicator()),
+                    ],
+                  );
+                }
+
+                final reports = snapshot.data ?? [];
+
+                if (reports.isEmpty) {
+                  return emptyState();
+                }
+
+                return chatsList(reports, appUser);
+              },
+            );
+          },
+        ),
       ),
     );
   }

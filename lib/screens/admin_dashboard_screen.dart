@@ -11,6 +11,7 @@ import '../widgets/custom_button.dart';
 import 'excel_import_screen.dart';
 import 'notifications_screen.dart';
 import 'statistics_screen.dart';
+import 'user_management_screen.dart';
 
 class AdminDashboardScreen extends StatefulWidget {
   const AdminDashboardScreen({super.key});
@@ -111,6 +112,13 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
     Navigator.push(
       context,
       AppPageRoute(page: StatisticsScreen()),
+    );
+  }
+
+  void openUserManagement() {
+    Navigator.push(
+      context,
+      AppPageRoute(page: const UserManagementScreen()),
     );
   }
 
@@ -480,12 +488,22 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
               ),
               actionCard(
                 title: AppStrings.text(
+                  he: 'ניהול משתמשים',
+                  en: 'User Management',
+                  ar: 'إدارة المستخدمين',
+                ),
+                icon: Icons.people_alt_rounded,
+                color: AppColors.primary,
+                onTap: openUserManagement,
+              ),
+              actionCard(
+                title: AppStrings.text(
                   he: 'סטטיסטיקות',
                   en: 'Statistics',
                   ar: 'إحصائيات',
                 ),
                 icon: Icons.bar_chart_rounded,
-                color: AppColors.primary,
+                color: AppColors.success,
                 onTap: openStatistics,
               ),
               actionCard(

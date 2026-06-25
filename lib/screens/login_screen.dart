@@ -6,6 +6,7 @@ import '../constants/app_strings.dart';
 import '../routes/app_routes.dart';
 import '../services/auth_service.dart';
 import '../services/language_service.dart';
+import '../services/notification_service.dart';
 import '../services/realtime_database_service.dart';
 import '../widgets/custom_button.dart';
 
@@ -29,12 +30,18 @@ class _LoginScreenState extends State<LoginScreen> {
     try {
       setState(() => isLoading = true);
 
-      final generatedEmail =
-          '${idNumberController.text.trim()}@kolshaket.com';
+      final idNumber = idNumberController.text.trim();
+      final password = passwordController.text.trim();
+
+      if (idNumber.isEmpty || password.isEmpty) {
+        throw Exception(AppStrings.wrongLogin);
+      }
+
+      final generatedEmail = '$idNumber@kolshaket.com';
 
       await _authService.login(
         email: generatedEmail,
-        password: passwordController.text.trim(),
+        password: password,
       );
 
       final currentUser = FirebaseAuth.instance.currentUser;
@@ -48,6 +55,7 @@ class _LoginScreenState extends State<LoginScreen> {
       if (!mounted) return;
 
       if (appUser == null) {
+        await _authService.logout();
         throw Exception('User data not found');
       }
 
@@ -55,6 +63,8 @@ class _LoginScreenState extends State<LoginScreen> {
         await _authService.logout();
         throw Exception(AppStrings.userBlocked);
       }
+
+      NotificationService.instance.saveCurrentUserToken();
 
       if (appUser.role == 'student') {
         Navigator.pushReplacementNamed(context, AppRoutes.home);
@@ -65,7 +75,9 @@ class _LoginScreenState extends State<LoginScreen> {
       if (!mounted) return;
 
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(AppStrings.wrongLogin)),
+        SnackBar(
+          content: Text(e.toString().replaceAll('Exception: ', '')),
+        ),
       );
     } finally {
       if (mounted) setState(() => isLoading = false);

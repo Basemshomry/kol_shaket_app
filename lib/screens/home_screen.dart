@@ -8,7 +8,7 @@ import '../utils/app_page_route.dart';
 import 'report_form_screen.dart';
 
 class HomeScreen extends StatelessWidget {
-  HomeScreen({super.key});
+  const HomeScreen({super.key});
 
   List<Map<String, dynamic>> reportCategories() {
     return [

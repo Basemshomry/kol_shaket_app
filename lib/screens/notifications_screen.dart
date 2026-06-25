@@ -5,14 +5,29 @@ import '../constants/app_strings.dart';
 import '../models/notification_model.dart';
 import '../models/report_model.dart';
 import '../services/realtime_database_service.dart';
+import '../utils/app_page_route.dart';
 import 'chat_screen.dart';
 import 'report_details_screen.dart';
-import '../utils/app_page_route.dart';
 
-class NotificationsScreen extends StatelessWidget {
-  NotificationsScreen({super.key});
+class NotificationsScreen extends StatefulWidget {
+  const NotificationsScreen({super.key});
 
+  @override
+  State<NotificationsScreen> createState() => _NotificationsScreenState();
+}
+
+class _NotificationsScreenState extends State<NotificationsScreen> {
   final RealtimeDatabaseService _databaseService = RealtimeDatabaseService();
+
+  Key refreshKey = UniqueKey();
+
+  Future<void> refreshNotifications() async {
+    setState(() {
+      refreshKey = UniqueKey();
+    });
+
+    await Future.delayed(const Duration(milliseconds: 500));
+  }
 
   String formatDate(DateTime date) {
     return '${date.day.toString().padLeft(2, '0')}/'
@@ -106,10 +121,12 @@ class NotificationsScreen extends StatelessWidget {
   }
 
   Widget emptyState() {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(30),
-        child: Column(
+    return ListView(
+      physics: const AlwaysScrollableScrollPhysics(),
+      padding: const EdgeInsets.all(30),
+      children: [
+        SizedBox(height: MediaQuery.of(context).size.height * 0.18),
+        Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             Container(
@@ -150,7 +167,7 @@ class NotificationsScreen extends StatelessWidget {
             ),
           ],
         ),
-      ),
+      ],
     );
   }
 
@@ -323,6 +340,29 @@ class NotificationsScreen extends StatelessWidget {
     );
   }
 
+  Widget notificationsList(List<NotificationModel> notifications) {
+    final unreadCount =
+        notifications.where((notification) => !notification.read).length;
+
+    return ListView.builder(
+      physics: const AlwaysScrollableScrollPhysics(),
+      padding: const EdgeInsets.only(bottom: 18),
+      itemCount: notifications.length + 1,
+      itemBuilder: (context, index) {
+        if (index == 0) {
+          return headerCard(unreadCount, notifications.length);
+        }
+
+        final notification = notifications[index - 1];
+
+        return Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          child: notificationCard(context, notification),
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -330,35 +370,21 @@ class NotificationsScreen extends StatelessWidget {
       appBar: AppBar(
         title: Text(AppStrings.notifications),
       ),
-      body: StreamBuilder<List<NotificationModel>>(
-        stream: _databaseService.getNotifications(),
-        builder: (context, snapshot) {
-          final notifications = snapshot.data ?? [];
+      body: RefreshIndicator(
+        onRefresh: refreshNotifications,
+        child: StreamBuilder<List<NotificationModel>>(
+          key: refreshKey,
+          stream: _databaseService.getNotifications(),
+          builder: (context, snapshot) {
+            final notifications = snapshot.data ?? [];
 
-          if (notifications.isEmpty) {
-            return emptyState();
-          }
+            if (notifications.isEmpty) {
+              return emptyState();
+            }
 
-          final unreadCount =
-              notifications.where((notification) => !notification.read).length;
-
-          return ListView.builder(
-            padding: const EdgeInsets.only(bottom: 18),
-            itemCount: notifications.length + 1,
-            itemBuilder: (context, index) {
-              if (index == 0) {
-                return headerCard(unreadCount, notifications.length);
-              }
-
-              final notification = notifications[index - 1];
-
-              return Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                child: notificationCard(context, notification),
-              );
-            },
-          );
-        },
+            return notificationsList(notifications);
+          },
+        ),
       ),
     );
   }

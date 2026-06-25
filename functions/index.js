@@ -1,32 +1,122 @@
-/**
- * Import function triggers from their respective submodules:
- *
- * const {onCall} = require("firebase-functions/v2/https");
- * const {onDocumentWritten} = require("firebase-functions/v2/firestore");
- *
- * See a full list of supported triggers at https://firebase.google.com/docs/functions
- */
+const admin = require("firebase-admin");
+const {onValueCreated} = require("firebase-functions/v2/database");
 
-const {setGlobalOptions} = require("firebase-functions");
-const {onRequest} = require("firebase-functions/https");
-const logger = require("firebase-functions/logger");
+admin.initializeApp();
 
-// For cost control, you can set the maximum number of containers that can be
-// running at the same time. This helps mitigate the impact of unexpected
-// traffic spikes by instead downgrading performance. This limit is a
-// per-function limit. You can override the limit for each function using the
-// `maxInstances` option in the function's options, e.g.
-// `onRequest({ maxInstances: 5 }, (req, res) => { ... })`.
-// NOTE: setGlobalOptions does not apply to functions using the v1 API. V1
-// functions should each use functions.runWith({ maxInstances: 10 }) instead.
-// In the v1 API, each function can only serve one request per container, so
-// this will be the maximum concurrent request count.
-setGlobalOptions({ maxInstances: 10 });
+async function getStaffTokens() {
+  const snapshot = await admin.database().ref("users").once("value");
 
-// Create and deploy your first functions
-// https://firebase.google.com/docs/functions/get-started
+  if (!snapshot.exists()) {
+    return [];
+  }
 
-// exports.helloWorld = onRequest((request, response) => {
-//   logger.info("Hello logs!", {structuredData: true});
-//   response.send("Hello from Firebase!");
-// });
+  const users = snapshot.val();
+  const tokens = [];
+
+  Object.values(users).forEach((user) => {
+    if (!user || user.role === "student") return;
+
+    const userTokens = user.fcmTokens || {};
+
+    Object.keys(userTokens).forEach((token) => {
+      tokens.push(token);
+    });
+  });
+
+  return tokens;
+}
+
+async function getUserTokens(uid) {
+  if (!uid) return [];
+
+  const snapshot = await admin
+      .database()
+      .ref(`users/${uid}/fcmTokens`)
+      .once("value");
+
+  if (!snapshot.exists()) {
+    return [];
+  }
+
+  return Object.keys(snapshot.val());
+}
+
+async function sendNotification(tokens, title, body, data = {}) {
+  if (!tokens || tokens.length === 0) return;
+
+  await admin.messaging().sendEachForMulticast({
+    tokens,
+    notification: {
+      title,
+      body,
+    },
+    data,
+    android: {
+      priority: "high",
+      notification: {
+        channelId: "kol_shaket_channel",
+        sound: "default",
+      },
+    },
+  });
+}
+
+exports.onNewReport = onValueCreated(
+    "/reports/{reportId}",
+    async (event) => {
+      const report = event.data.val() || {};
+      const tokens = await getStaffTokens();
+
+      const studentName =
+      `${report.studentFirstName || ""} ${report.studentLastName || ""}`.trim();
+
+      const category = report.category || "New report";
+
+      await sendNotification(
+          tokens,
+          "New Report",
+          studentName ? `${studentName}: ${category}` : category,
+          {
+            screen: "reports",
+            reportId: event.params.reportId,
+            type: "new_report",
+          },
+      );
+    },
+);
+
+exports.onNewMessage = onValueCreated(
+    "/chats/{reportId}/{chatType}/messages/{messageId}",
+    async (event) => {
+      const message = event.data.val() || {};
+
+      const reportSnapshot = await admin
+          .database()
+          .ref(`reports/${event.params.reportId}`)
+          .once("value");
+
+      if (!reportSnapshot.exists()) return;
+
+      const report = reportSnapshot.val() || {};
+
+      let tokens = [];
+
+      if (message.senderRole === "student") {
+        tokens = await getStaffTokens();
+      } else {
+        tokens = await getUserTokens(report.studentId);
+      }
+
+      await sendNotification(
+          tokens,
+          "New Message",
+          message.message || "You received a new message",
+          {
+            screen: "chats",
+            reportId: event.params.reportId,
+            chatType: event.params.chatType,
+            type: "new_message",
+          },
+      );
+    },
+);
